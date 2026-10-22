@@ -1,0 +1,11 @@
+{
+  "name": "budgetly-desktop",
+  "private": true,
+  "description": "Outils de construction de la coque Tauri (version figée, intégrité vérifiée par package-lock.json)",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

@@ -40,6 +40,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - **Base de données chiffrée au repos** : SQLite + SQLite3MultipleCiphers (`io.github.willena:sqlite-jdbc`), schéma SQLCipher v4.
 - **Aucune télémétrie**.
 - Appels externes limités à la récupération des cours par **ISIN uniquement**, jamais les quantités ni les montants.
+- **Seule autre sortie : la vérification de mise à jour**, faite par la coque au lancement (désactivable dans Réglages, réglage `updates.json` hors de la base car lu avant l'ouverture du coffre). Une requête GET vers `latest.json` de la dernière version GitHub, sans paramètre ni identifiant (en-têtes `User-Agent` du plugin et `Accept` seulement) ; GitHub et son CDN voient l'adresse IP et l'heure. Activée par défaut, choix du propriétaire du projet ; fichier présent mais illisible = désactivée. Installation seulement sur accord explicite, après vérification de la signature (clé publique minisign embarquée ; clé privée dans l'environnement GitHub `release`, donnée aux seuls tags `v*` poussés, et seulement au job qui signe les installeurs déjà construits, sans rien compiler ; CLI Tauri figé par `desktop/package-lock.json`, actions épinglées par commit). Windows : installation automatique (NSIS, mode passif, cœur arrêté avant) ; Linux : l'application ouvre la page de la version (paquet .deb à installer par-dessus).
 - Aucun service cloud (y compris LLM) pour le parsing.
 - **Mot de passe maître** : clé de la base dérivée par Argon2id (64 Mio, 3 passes) ; seuls le sel et les paramètres sont écrits (`vault.json`). La base reste verrouillée au démarrage ; toute API de données répond 423 tant que le coffre est fermé. Mot de passe perdu = données irrécupérables (assumé).
 - **PDF importés jamais conservés.** Seul un journal d'import est gardé : date, utilisateur, hash du fichier, impact (comptes touchés, transactions et positions créées).
@@ -108,13 +109,14 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 ## 8. Dette provisoire assumée
 - Port fixe 47811.
 - Icônes provisoires.
-- Installeurs non signés : Windows SmartScreen avertira au premier lancement.
+- Installeurs non signés par un certificat de code : Windows SmartScreen avertira au premier lancement (les mises à jour, elles, sont signées par la clé de l'application).
 - Téléchargements (sauvegarde, CSV) depuis la fenêtre desktop : natifs sous Windows (WebView2), non vérifiés sous Linux (WebKitGTK) ; les sauvegardes restent de toute façon dans le dossier de données affiché.
 
 ## 9. Questions ouvertes
 - Couverture réelle de Yahoo Finance sur les ISIN détenus : affichée par l'application à chaque « Actualiser les cours » ; envisager une seconde source si trop de supports restent introuvables (fonds non cotés en bourse surtout).
 
 ## 10. Journal des changements
+- 22/10/2026 — Version 0.4.0. Mise à jour automatique, désormais possible avec le dépôt public : vérification au démarrage (désactivable), installeurs signés, publication des versions sur GitHub avec `latest.json` depuis un tag `v*`. Remplace la décision de la 0.2.0.
 - 22/10/2026 — Projet ouvert : dépôt public `budgetly-app` repart d'un commit unique (historique privé conservé à part, sans relevé mais avec des métadonnées personnelles), licence AGPL-3.0-or-later. Guide de contribution, dossier `.claude/` (compétences connecteur et vie privée, agent relecteur), outils d'extraction et d'anonymisation de mise en page, contrôle vie privée scripté rejoué en CI. Jobs natifs de nouveau sur chaque PR (minutes gratuites en public).
 - 22/10/2026 — CI économe en minutes (quota du plan gratuit épuisé par les paquets Windows) : natif après merge, paquets à la demande.
 - 22/10/2026 — Version 0.3.0. Où va l'argent : charges fixes et abonnements (détection, alertes de nouveau prélèvement et de changement de montant), fin de mois prévue et alertes de budget, ventilation et notes. Migration V8.

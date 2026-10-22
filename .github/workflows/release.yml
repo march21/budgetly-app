@@ -1,9 +1,11 @@
 name: Paquets desktop
 
-# Installeurs Windows (NSIS) et Linux (deb, AppImage). Chaque OS trace ses propres métadonnées natives
+# Installeurs Windows (NSIS) et Linux (deb). Chaque OS trace ses propres métadonnées natives
 # (bibliothèque SQLite et JNI AWT propres à la plateforme) avant de compiler l'image.
-# Coûteux (Windows ≈ 35 min) : jamais automatique sur une PR. Lancement manuel (Actions → « Run workflow »),
-# tag v*, ou PR étiquetée « paquets » (ou « metadonnees-natives » pour réexporter les traces Windows).
+# Lancement manuel (Actions → « Run workflow »), PR étiquetée « paquets » (ou « metadonnees-natives » pour
+# réexporter les traces Windows), ou tag v* poussé : publication. La clé de signature des mises à jour n'est
+# donnée qu'au job « sign » (environnement « release », tag v* poussé seulement), qui ne compile rien : il signe
+# les installeurs déjà construits avec le CLI Tauri figé (desktop/package-lock.json). Actions épinglées par commit.
 on:
   workflow_dispatch:
     inputs:
@@ -40,7 +42,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Lancement manuel : seulement la ou les plateformes demandées (tag et PR : les deux).
+        # Lancement manuel : seulement la ou les plateformes demandées (tag et PR : les deux). L'exclusion ne
+        # s'applique qu'à une clé de la matrice de base, d'où « name » listé ici et complété par « include ».
+        name: [Windows, Linux]
         exclude:
           - name: ${{ inputs.platforms == 'windows' && 'Linux' || 'aucune' }}
           - name: ${{ inputs.platforms == 'linux' && 'Windows' || 'aucune' }}
@@ -63,8 +67,8 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: npm
@@ -72,12 +76,12 @@ jobs:
       - name: UI
         working-directory: ui
         run: npm ci && npm run build
-      - uses: graalvm/setup-graalvm@v1
+      - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173 # v1.6.7
         with:
           java-version: 21
           distribution: ${{ matrix.graalvm }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       # Métadonnées versionnées (union Linux + Windows) ; ce que les tests tracent en plus sur cette plateforme
       # est signalé et ajouté pour ce paquet.
       - name: Tests JVM sous agent GraalVM (contrôle des métadonnées)
@@ -138,23 +142,28 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: desktop/src-tauri
+      - name: CLI Tauri (version figée)
+        working-directory: desktop
+        run: npm ci
       - name: Installeur
         if: runner.os != 'Windows'
         working-directory: desktop
         run: |
           set -o pipefail
-          npx --yes @tauri-apps/cli@2 build 2>&1 | tee tauri.log
+          npx --no-install tauri build 2>&1 | tee tauri.log
       # Sous Windows, le link.exe de Git Bash masque celui de MSVC : PowerShell.
       - name: Installeur (Windows)
         if: runner.os == 'Windows'
         working-directory: desktop
         shell: pwsh
         run: |
-          npx --yes @tauri-apps/cli@2 build 2>&1 | Tee-Object -FilePath tauri.log
+          npx --no-install tauri build 2>&1 | Tee-Object -FilePath tauri.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Erreurs Tauri en annotations
         if: failure()
@@ -179,10 +188,79 @@ jobs:
         run: |
           cd desktop/src-tauri/target/release/bundle
           echo "::notice title=Paquets ${{ matrix.name }}::$(find . -maxdepth 2 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.AppImage' \) -printf '%p (%k Ko) ' 2>/dev/null || find . -maxdepth 2 -type f)"
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: budgetly-${{ matrix.name }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
             desktop/src-tauri/target/release/bundle/deb/*.deb
           retention-days: 14
+
+  # Tag v* poussé : signature des installeurs (latest.json exige une signature par plateforme ; le .deb reste
+  # installé à la main). Seul job à recevoir la clé ; aucune compilation ni script de build.
+  sign:
+    name: Signature des mises à jour
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+      - name: CLI Tauri (version figée)
+        working-directory: desktop
+        run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          path: paquets
+          merge-multiple: true
+      - name: Signature
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          shopt -s nullglob
+          files=(paquets/*-setup.exe paquets/*.deb)
+          [ ${#files[@]} -gt 0 ] || { echo "::error::Aucun installeur à signer"; exit 1; }
+          for f in "${files[@]}"; do
+            (cd desktop && npx --no-install tauri signer sign "../$f" > /dev/null)
+            [ -s "$f.sig" ] || { echo "::error::Signature absente pour $(basename "$f")"; exit 1; }
+          done
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: signatures
+          path: paquets/*.sig
+          retention-days: 14
+
+  # Tag v* poussé : publie la version (créée au besoin, sinon complétée) avec les installeurs et latest.json.
+  publish:
+    name: Publication de la version
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: sign
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          path: paquets
+          merge-multiple: true
+      - name: Version du tag = version de l'application
+        run: |
+          app=$(python3 -c "import json; print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])")
+          [ "v$app" = "$GITHUB_REF_NAME" ] || { echo "::error::Tag $GITHUB_REF_NAME, application $app"; exit 1; }
+      - name: latest.json
+        run: python3 .github/scripts/latest_json.py paquets "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" > paquets/latest.json
+      - name: Version GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=$(find paquets -maxdepth 1 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.sig' -o -name latest.json \))
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" $files --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" $files --title "Budgetly ${GITHUB_REF_NAME#v}" --generate-notes
+          fi
