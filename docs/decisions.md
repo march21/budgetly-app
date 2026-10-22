@@ -117,8 +117,19 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 ## 9. Questions ouvertes
 - Couverture réelle de Yahoo Finance sur les ISIN détenus : affichée par l'application à chaque « Actualiser les cours » ; envisager une seconde source si trop de supports restent introuvables (fonds non cotés en bourse surtout).
 
+## 9 bis. Feuille de route
+Suivie dans les issues GitHub, par ordre de priorité :
+1. Import CSV / OFX générique (#3) — condition de l'adoption par d'autres banques que celles couvertes.
+2. Patrimoine dans le temps et performance réelle (#4).
+3. Repères fiscaux et échéances (#5).
+4. Objectifs d'épargne et taux d'épargne (#6).
+5. Bilan annuel et comparaisons (#7).
+6. Suivi des crédits (#8).
+7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
+
 ## 10. Journal des changements
 - 23/10/2026 — Version 0.5.0. Import des exports CSV et OFX (#3) : correspondance des colonnes, soldes de contrôle obligatoires, doublons par date et montant face aux relevés PDF.
+- 22/10/2026 — Feuille de route publiée en issues (#3 à #9).
 - 22/10/2026 — Publication : la première tentative de la 0.4.0 s'est arrêtée à la signature (installeurs téléchargés dans des sous-dossiers) ; artefacts mis à plat avant signature et publication, version et tag recréés.
 - 22/10/2026 — Version 0.4.0. Mise à jour automatique, désormais possible avec le dépôt public : vérification au démarrage (désactivable), installeurs signés, publication des versions sur GitHub avec `latest.json` depuis un tag `v*`. Remplace la décision de la 0.2.0.
 - 22/10/2026 — Projet ouvert : dépôt public `budgetly-app` repart d'un commit unique (historique privé conservé à part, sans relevé mais avec des métadonnées personnelles), licence AGPL-3.0-or-later. Guide de contribution, dossier `.claude/` (compétences connecteur et vie privée, agent relecteur), outils d'extraction et d'anonymisation de mise en page, contrôle vie privée scripté rejoué en CI. Jobs natifs de nouveau sur chaque PR (minutes gratuites en public).
