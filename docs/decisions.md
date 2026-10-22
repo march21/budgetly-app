@@ -116,6 +116,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - Couverture réelle de Yahoo Finance sur les ISIN détenus : affichée par l'application à chaque « Actualiser les cours » ; envisager une seconde source si trop de supports restent introuvables (fonds non cotés en bourse surtout).
 
 ## 10. Journal des changements
+- 22/10/2026 — Version 0.4.1 : la publication de la 0.4.0 s'est arrêtée à la signature (installeurs téléchargés dans des sous-dossiers) ; artefacts mis à plat avant signature et publication. Aucun changement de l'application.
 - 22/10/2026 — Version 0.4.0. Mise à jour automatique, désormais possible avec le dépôt public : vérification au démarrage (désactivable), installeurs signés, publication des versions sur GitHub avec `latest.json` depuis un tag `v*`. Remplace la décision de la 0.2.0.
 - 22/10/2026 — Projet ouvert : dépôt public `budgetly-app` repart d'un commit unique (historique privé conservé à part, sans relevé mais avec des métadonnées personnelles), licence AGPL-3.0-or-later. Guide de contribution, dossier `.claude/` (compétences connecteur et vie privée, agent relecteur), outils d'extraction et d'anonymisation de mise en page, contrôle vie privée scripté rejoué en CI. Jobs natifs de nouveau sur chaque PR (minutes gratuites en public).
 - 22/10/2026 — CI économe en minutes (quota du plan gratuit épuisé par les paquets Windows) : natif après merge, paquets à la demande.
