@@ -74,14 +74,27 @@ class ImportService(
                 "Document non reconnu : sont pris en charge les relevés de comptes La Banque Postale, " +
                     "l'évaluation de PEA EasyBourse et le bulletin annuel de l'assurance vie EasyVie.",
             )
-        val statement = parser.parse(document)
+        return previewStatement(hash, parser.parse(document))
+    }
 
+    /**
+     * Aperçu d'un relevé déjà lu (PDF ou export CSV/OFX). [looseDuplicates] : un export ne reprend pas les libellés
+     * des relevés PDF ; une opération du même compte, du même jour et du même montant y compte comme doublon.
+     */
+    fun previewStatement(hash: String, statement: ParsedStatement, looseDuplicates: Boolean = false): ImportPreview {
         val ibans = statement.accounts.map { it.account.iban }
         val existingAccounts = knownAccounts()
         val fingerprints = statement.accounts.map { Fingerprints.of(it.account.iban, it.transactions) }
         val existingFingerprints = existingFingerprints(fingerprints.flatten())
         val duplicates = fingerprints.flatMapIndexed { a, list ->
-            list.mapIndexedNotNull { i, fp -> if (fp in existingFingerprints) TxnRef(a, i) else null }
+            val sameDayAmount = if (looseDuplicates) existingDayAmounts(existingAccounts[statement.accounts[a].account.iban]) else mutableMapOf()
+            list.mapIndexedNotNull { i, fp ->
+                val t = statement.accounts[a].transactions[i]
+                val key = "${t.bookingDate}|${t.amountCents}"
+                val left = sameDayAmount[key] ?: 0
+                if (left > 0) sameDayAmount[key] = left - 1
+                if (fp in existingFingerprints || left > 0) TxnRef(a, i) else null
+            }
         }.toSet()
         val transfers = InternalTransfers.detect(statement, existingAccounts.keys + ibans)
 
@@ -183,7 +196,7 @@ class ImportService(
             account.transactions.forEachIndexed { i, t ->
                 val ref = TxnRef(a, i)
                 val fingerprint = p.fingerprints[a][i]
-                val exists = jdbc.sql("select count(*) from txn where fingerprint = ?").param(fingerprint)
+                val exists = ref in p.duplicates || jdbc.sql("select count(*) from txn where fingerprint = ?").param(fingerprint)
                     .query(Long::class.java).single() > 0
                 if (exists) {
                     skipped++
@@ -225,6 +238,14 @@ class ImportService(
 
     private fun knownAccounts(): Map<String, Long> =
         jdbc.sql("select iban, id from account").query { rs, _ -> rs.getString(1) to rs.getLong(2) }.list().toMap()
+
+    /** Opérations déjà en base sur ce compte, comptées par « date|montant ». */
+    private fun existingDayAmounts(accountId: Long?): MutableMap<String, Int> {
+        if (accountId == null) return mutableMapOf()
+        return jdbc.sql("select booking_date, amount_cents from txn where account_id = ?").param(accountId)
+            .query { rs, _ -> "${rs.getString(1)}|${rs.getLong(2)}" }.list()
+            .groupingBy { it }.eachCount().toMutableMap()
+    }
 
     private fun existingFingerprints(candidates: List<String>): Set<String> =
         candidates.chunked(500).flatMap { chunk ->
