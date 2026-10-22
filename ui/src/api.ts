@@ -298,6 +298,7 @@ export type ImportRecord = {
 export type RuleSuggestion = { pattern: string; count: number; totalCents: number; sampleLabel: string; lastDate: string };
 
 export type AutoLockSetting = { minutes: number; allowed: number[] };
+export type UpdateSetting = { checkAtStartup: boolean };
 
 export type BackupKind = "MANUAL" | "AUTOMATIC" | "SAFETY";
 
@@ -400,6 +401,9 @@ export const api = {
     request<{ updated: number }>("/api/transactions/category", { ...json({ transactionIds, categoryId }), method: "PUT" }),
   autoLock: () => request<AutoLockSetting>("/api/vault/auto-lock"),
   setAutoLock: (minutes: number) => request<AutoLockSetting>("/api/vault/auto-lock", { ...json({ minutes }), method: "PUT" }),
+  updateSetting: () => request<UpdateSetting>("/api/settings/updates"),
+  setUpdateSetting: (checkAtStartup: boolean) =>
+    request<UpdateSetting>("/api/settings/updates", { ...json({ checkAtStartup }), method: "PUT" }),
   activity: () => request<void>("/api/vault/activity", { method: "POST" }),
   createRule: (pattern: string, categoryId: number) => request<{ id: number }>("/api/rules", json({ pattern, categoryId })),
   deleteRule: (id: number) => request<void>(`/api/rules/${id}`, { method: "DELETE" }),

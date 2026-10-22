@@ -21,6 +21,7 @@ export function SettingsPage({ minPasswordLength }: { minPasswordLength: number 
       <ThemeSection />
       <BackupSection />
       <AutoLockSection />
+      <UpdatesSection />
       <PasswordSection minPasswordLength={minPasswordLength} />
       <ExportSection />
     </section>
@@ -194,6 +195,47 @@ function AutoLockSection() {
             {m === 0 ? "Jamais" : m === 60 ? "1 h" : `${m} min`}
           </button>
         ))}
+      </div>
+      {error && <p className="form-error">{error}</p>}
+    </section>
+  );
+}
+
+function UpdatesSection() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .updateSetting()
+      .then((s) => setEnabled(s.checkAtStartup))
+      .catch(() => undefined);
+  }, []);
+
+  async function choose(value: boolean) {
+    setError(null);
+    try {
+      setEnabled((await api.setUpdateSetting(value)).checkAtStartup);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Le réglage n'a pas été enregistré.");
+    }
+  }
+
+  if (enabled === null) return null;
+  return (
+    <section className="settings-block" aria-labelledby="updates-title">
+      <h2 id="updates-title">Mises à jour</h2>
+      <p className="muted">
+        Au lancement, l'application demande à GitHub le numéro de la dernière version publiée. Aucune donnée n'est
+        envoyée ; une mise à jour n'est installée qu'avec votre accord, et sa signature est vérifiée.
+      </p>
+      <div className="segmented" role="radiogroup" aria-labelledby="updates-title">
+        <button role="radio" aria-checked={enabled} className={enabled ? "active" : ""} onClick={() => choose(true)}>
+          Vérifier au démarrage
+        </button>
+        <button role="radio" aria-checked={!enabled} className={!enabled ? "active" : ""} onClick={() => choose(false)}>
+          Jamais
+        </button>
       </div>
       {error && <p className="form-error">{error}</p>}
     </section>

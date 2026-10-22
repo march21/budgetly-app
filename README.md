@@ -22,7 +22,8 @@ Votre banque n'y est pas ? C'est la contribution la plus utile : voir [Contribue
 ## Installation
 
 Installeurs Windows (sans droits administrateur) et Debian/Ubuntu : page **Releases** du dépôt. Une nouvelle
-version s'installe par-dessus l'ancienne ; les données restent dans le dossier de l'application.
+version s'installe par-dessus l'ancienne ; les données restent dans le dossier de l'application. À partir de la
+0.4.0, l'application propose elle-même les nouvelles versions au lancement (désactivable dans Réglages).
 
 ## Structure
 

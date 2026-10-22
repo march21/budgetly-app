@@ -3,7 +3,7 @@
 Lire `docs/decisions.md` avant toute modification structurante : il fait référence. Toute décision nouvelle ou modifiée y est consignée (section « Journal des changements », datée, avec la raison).
 
 ## Règles non négociables
-- Vie privée : rien ne sort de la machine, sauf des requêtes de cours identifiées par ISIN seul. Pas de télémétrie, pas de service cloud ni LLM pour le parsing.
+- Vie privée : rien ne sort de la machine, sauf des requêtes de cours identifiées par ISIN seul et la vérification de mise à jour de la coque (désactivable, sans aucun paramètre). Pas de télémétrie, pas de service cloud ni LLM pour le parsing.
 - Jamais de PDF réel dans le dépôt ni dans les logs. Fixtures générées par le code, avec des données fictives.
 - Jamais de montant, libellé, IBAN ou numéro de contrat dans les logs.
 - Montants en centimes (`Long`), jamais en flottants.

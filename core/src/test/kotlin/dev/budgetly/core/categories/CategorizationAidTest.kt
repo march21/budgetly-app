@@ -93,6 +93,15 @@ class CategorizationAidTest(
             content = """{"minutes":5}"""
         }.andExpect { status { isOk() } }
 
+        // Mises à jour : vérifiées au démarrage par défaut, réglage conservé hors de la base.
+        assertTrue(get("/api/settings/updates")["checkAtStartup"].asBoolean())
+        mvc.put("/api/settings/updates") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """{"checkAtStartup":false}"""
+        }.andExpect { status { isOk() } }
+        assertFalse(get("/api/settings/updates")["checkAtStartup"].asBoolean())
+        assertTrue(java.nio.file.Files.readString(vault.databaseFile.resolveSibling("updates.json")).contains("false"))
+
         val now = Instant.now()
         assertFalse(autoLock.lockIfIdle(now.plus(Duration.ofMinutes(4))), "pas encore")
         mvc.post("/api/vault/activity").andExpect { status { isNoContent() } }

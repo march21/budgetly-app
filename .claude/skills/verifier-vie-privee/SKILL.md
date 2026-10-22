@@ -27,8 +27,8 @@ Parcourez le diff (`git diff --staged`) et vérifiez :
   inventés, pas « légèrement modifiés » depuis un vrai relevé. Un ISIN fictif ressemble à `FR0000000011`.
 - **Logs et exceptions** : aucun montant, libellé, IBAN, numéro de contrat, nom de fichier importé. On logue des
   compteurs et des types d'erreur (`e.javaClass.simpleName`), jamais `e.message` venant d'un relevé.
-- **Réseau** : aucune nouvelle sortie. La seule permise : les cours, identifiés par ISIN seul (voir
-  `portfolio/PriceProvider.kt`). Toute autre sortie est une décision à consigner et à justifier dans
+- **Réseau** : aucune nouvelle sortie. Seules permises : les cours, identifiés par ISIN seul (voir
+  `portfolio/PriceProvider.kt`), et la vérification de mise à jour de la coque (`desktop/src-tauri/src/main.rs`). Toute autre sortie est une décision à consigner et à justifier dans
   `docs/decisions.md`, avant le code.
 - **Stockage** : toute donnée personnelle va dans la base chiffrée, jamais dans un fichier à côté, jamais dans
   le `localStorage` de l'interface (réservé aux préférences d'affichage).

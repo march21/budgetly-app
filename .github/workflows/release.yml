@@ -2,8 +2,9 @@ name: Paquets desktop
 
 # Installeurs Windows (NSIS) et Linux (deb, AppImage). Chaque OS trace ses propres métadonnées natives
 # (bibliothèque SQLite et JNI AWT propres à la plateforme) avant de compiler l'image.
-# Coûteux (Windows ≈ 35 min) : jamais automatique sur une PR. Lancement manuel (Actions → « Run workflow »),
-# tag v*, ou PR étiquetée « paquets » (ou « metadonnees-natives » pour réexporter les traces Windows).
+# Lancement manuel (Actions → « Run workflow »), PR étiquetée « paquets » (ou « metadonnees-natives » pour
+# réexporter les traces Windows), ou tag v* : publication. Seul un tag v* passe par l'environnement « release »
+# (clé de signature des mises à jour), signe les installeurs et publie la version avec latest.json.
 on:
   workflow_dispatch:
     inputs:
@@ -37,6 +38,7 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'paquets') ||
       contains(github.event.pull_request.labels.*.name, 'metadonnees-natives')
     runs-on: ${{ matrix.os }}
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'release' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -145,16 +147,30 @@ jobs:
       - name: Installeur
         if: runner.os != 'Windows'
         working-directory: desktop
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -o pipefail
           npx --yes @tauri-apps/cli@2 build 2>&1 | tee tauri.log
+          # Le paquet .deb ne passe pas par l'updater (installation manuelle), mais latest.json exige une signature.
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            for deb in src-tauri/target/release/bundle/deb/*.deb; do
+              npx --yes @tauri-apps/cli@2 signer sign "$deb"
+            done
+          fi
       # Sous Windows, le link.exe de Git Bash masque celui de MSVC : PowerShell.
       - name: Installeur (Windows)
         if: runner.os == 'Windows'
         working-directory: desktop
         shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          npx --yes @tauri-apps/cli@2 build 2>&1 | Tee-Object -FilePath tauri.log
+          # Sur un tag : installeur signé (.sig) pour la mise à jour automatique.
+          $extra = if ($env:GITHUB_REF -like 'refs/tags/v*') { @('--config', 'src-tauri/tauri.updater.conf.json') } else { @() }
+          npx --yes @tauri-apps/cli@2 build @extra 2>&1 | Tee-Object -FilePath tauri.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Erreurs Tauri en annotations
         if: failure()
@@ -184,5 +200,38 @@ jobs:
           name: budgetly-${{ matrix.name }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/nsis/*.exe.sig
             desktop/src-tauri/target/release/bundle/deb/*.deb
+            desktop/src-tauri/target/release/bundle/deb/*.deb.sig
           retention-days: 14
+
+  # Tag v* : publie la version (créée au besoin, sinon complétée) avec les installeurs et latest.json.
+  publish:
+    name: Publication de la version
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          path: paquets
+          merge-multiple: true
+      - name: Version du tag = version de l'application
+        run: |
+          app=$(python3 -c "import json; print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])")
+          [ "v$app" = "$GITHUB_REF_NAME" ] || { echo "::error::Tag $GITHUB_REF_NAME, application $app"; exit 1; }
+      - name: latest.json
+        run: python3 .github/scripts/latest_json.py paquets "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" > paquets/latest.json
+      - name: Version GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=$(find paquets -maxdepth 1 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.sig' -o -name latest.json \))
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" $files --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" $files --title "Budgetly ${GITHUB_REF_NAME#v}" --generate-notes
+          fi

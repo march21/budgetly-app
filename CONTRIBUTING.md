@@ -8,8 +8,8 @@ Merci de votre intérêt ! Budgetly lit des relevés bancaires : la première r�
 Elles sont détaillées dans [`CLAUDE.md`](CLAUDE.md) (lu aussi par les assistants IA) et
 [`docs/decisions.md`](docs/decisions.md). En bref :
 
-- Rien ne sort de la machine, sauf les requêtes de cours identifiées par ISIN seul. Pas de télémétrie, pas de
-  service cloud, pas d'IA pour le parsing.
+- Rien ne sort de la machine, sauf les requêtes de cours identifiées par ISIN seul et la vérification de mise à
+  jour (désactivable). Pas de télémétrie, pas de service cloud, pas d'IA pour le parsing.
 - Jamais de relevé réel dans le dépôt, les issues, les PR ou les logs. Les tests utilisent des relevés
   **générés par le code** avec des données inventées.
 - Jamais de montant, libellé, IBAN ou numéro de contrat dans les logs.
