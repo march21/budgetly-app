@@ -12,7 +12,7 @@ class UpdatePreferenceTest {
     private val preference = UpdatePreference(BudgetlyProperties(dataDir = dir), ObjectMapper())
 
     @Test
-    fun `absent, la verification est activee ; le choix est relu tel quel`() {
+    fun `absent, la verification est activee, le choix est relu tel quel`() {
         assertTrue(preference.checkAtStartup())
         preference.setCheckAtStartup(false)
         assertFalse(preference.checkAtStartup())
