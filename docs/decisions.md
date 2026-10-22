@@ -18,14 +18,16 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 | Crypto | — | — | Plus tard |
 
 ## 3. Synchronisation des données
-- **V1 : import de relevés PDF uniquement**, déposés manuellement par l'utilisateur.
+- **Import de relevés PDF**, déposés manuellement par l'utilisateur ; **exports CSV et OFX** pour les banques sans connecteur PDF (depuis la 0.5.0).
 - **Un parser par établissement × type de document**, derrière une interface commune. Un PDF peut alimenter plusieurs comptes.
 - Les PDF sont du texte natif : **pas d'OCR**. Extraction **avec positions** (PDFBox `TextPosition`) pour attribuer chaque montant à sa colonne.
 - **Validation obligatoire de chaque import**, selon le type de document :
   - relevé de compte : solde initial + mouvements = solde final ;
-  - évaluation ou bulletin de positions : somme des lignes = total (tolérance 0,01 €).
+  - évaluation ou bulletin de positions : somme des lignes = total (tolérance 0,01 €) ;
+  - export CSV / OFX : deux soldes encadrent les opérations et doivent concorder avec elles. Ils viennent du fichier quand il les donne (colonne de solde, contrôlée **jour par jour** car l'ordre des opérations d'une même journée varie selon les banques ; solde comptable OFX `LEDGERBAL`), sinon de l'utilisateur, tels qu'affichés par sa banque. Pas de soldes, pas d'import.
   Sinon rejet.
-- **Dédoublonnage** des transactions entre relevés qui se chevauchent.
+- **Dédoublonnage** des transactions entre relevés qui se chevauchent. Un export ne reprend pas les libellés du relevé PDF : pour un export, une opération du même compte, du même jour et du même montant déjà connue compte comme doublon (au plus autant que d'opérations connues).
+- **Exports CSV** : encodage (UTF-8 sinon Windows-1252) et séparateur détectés ; correspondance des colonnes proposée d'après les en-têtes, corrigeable, mémorisée par en-tête dans la base chiffrée. **OFX** 1.x (SGML) et 2.x (XML) ; le compte est reconnu quand son IBAN contient l'identifiant OFX (banque + guichet + compte). Le fichier reste en mémoire 30 minutes au plus, jamais écrit. QIF non pris en charge (pas de solde, dates ambiguës).
 - **Relevés de test fictifs générés par le code** (`LbpStatementFixture`), qui reproduisent la mise en page mesurée sur un relevé réel (coordonnées, tailles, pièges) avec identité, IBAN et montants inventés. Aucune donnée dérivée d'un vrai relevé n'est versionnée. **Les PDF réels ne vont jamais dans le dépôt.**
 - Les polices des relevés Banque Postale ont un encodage propre (accents et « € » mal décodés) : les parsers ne s'appuient que sur des mots ASCII, des formes (dates, montants) et des positions.
 - Import en deux temps : **aperçu** (rien n'est écrit, aperçu gardé 30 min en mémoire) puis **validation** par l'utilisateur, en une transaction.
@@ -116,6 +118,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - Couverture réelle de Yahoo Finance sur les ISIN détenus : affichée par l'application à chaque « Actualiser les cours » ; envisager une seconde source si trop de supports restent introuvables (fonds non cotés en bourse surtout).
 
 ## 10. Journal des changements
+- 23/10/2026 — Version 0.5.0. Import des exports CSV et OFX (#3) : correspondance des colonnes, soldes de contrôle obligatoires, doublons par date et montant face aux relevés PDF.
 - 22/10/2026 — Publication : la première tentative de la 0.4.0 s'est arrêtée à la signature (installeurs téléchargés dans des sous-dossiers) ; artefacts mis à plat avant signature et publication, version et tag recréés.
 - 22/10/2026 — Version 0.4.0. Mise à jour automatique, désormais possible avec le dépôt public : vérification au démarrage (désactivable), installeurs signés, publication des versions sur GitHub avec `latest.json` depuis un tag `v*`. Remplace la décision de la 0.2.0.
 - 22/10/2026 — Projet ouvert : dépôt public `budgetly-app` repart d'un commit unique (historique privé conservé à part, sans relevé mais avec des métadonnées personnelles), licence AGPL-3.0-or-later. Guide de contribution, dossier `.claude/` (compétences connecteur et vie privée, agent relecteur), outils d'extraction et d'anonymisation de mise en page, contrôle vie privée scripté rejoué en CI. Jobs natifs de nouveau sur chaque PR (minutes gratuites en public).

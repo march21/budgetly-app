@@ -1513,7 +1513,7 @@ select {
   padding: 5px 7px;
   font: inherit;
   font-size: 13px;
-  background: var(--surface, transparent);
+  background: var(--surface);
   color: inherit;
   min-width: 110px;
 }

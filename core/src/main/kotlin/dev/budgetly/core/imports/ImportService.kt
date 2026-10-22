@@ -72,7 +72,8 @@ class ImportService(
             ?: throw ApiException(
                 HttpStatus.UNPROCESSABLE_ENTITY, "UNSUPPORTED_DOCUMENT",
                 "Document non reconnu : sont pris en charge les relevés de comptes La Banque Postale, " +
-                    "l'évaluation de PEA EasyBourse et le bulletin annuel de l'assurance vie EasyVie.",
+                    "l'évaluation de PEA EasyBourse, le bulletin annuel de l'assurance vie EasyVie et l'avis d'opération " +
+                    "Natixis (PEE). Pour une autre banque, importez l'export CSV ou OFX de vos opérations.",
             )
         return previewStatement(hash, parser.parse(document))
     }
