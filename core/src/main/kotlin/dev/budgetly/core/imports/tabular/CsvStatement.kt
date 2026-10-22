@@ -37,13 +37,19 @@ object CsvStatement {
     private fun normalize(text: String) =
         Normalizer.normalize(text, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase().trim()
 
+    private fun looksLikeValue(cell: String): Boolean =
+        cell.any(Char::isDigit) && (TabularValues.detectDateFormat(listOf(cell)) != null ||
+            TabularValues.parseCents(cell, true) != null || TabularValues.parseCents(cell, false) != null ||
+            cell.count(Char::isDigit) >= 6)
+
     private val headerWords = listOf("date", "libelle", "label", "montant", "amount", "debit", "credit", "solde", "balance", "operation", "description")
 
     /** Correspondance proposée d'après les en-têtes, ou d'après le contenu s'il n'y en a pas. Null si rien d'exploitable. */
     fun suggest(rows: List<List<String>>): CsvMapping? {
         if (rows.isEmpty()) return null
+        // Une ligne d'en-tête ne porte aucune valeur : une ligne de préambule « Solde au 31/10 ; 1 234,56 » n'en est pas une.
         val headerRow = rows.take(20).indexOfFirst { row ->
-            row.count { cell -> val n = normalize(cell); headerWords.any { n.contains(it) } } >= 2
+            row.count { cell -> val n = normalize(cell); headerWords.any { n.contains(it) } } >= 2 && row.none(::looksLikeValue)
         }.takeIf { it >= 0 }
         val firstDataRow = (headerRow ?: -1) + 1
         val data = rows.drop(firstDataRow).take(200)
@@ -191,9 +197,10 @@ object CsvStatement {
 }
 
 /**
- * Contrôle d'une colonne de solde, jour par jour : l'ordre des opérations d'une même journée varie selon les
- * banques, mais le solde de fin de journée doit être le solde de la veille plus les opérations du jour, et
- * figurer sur l'une des lignes de la journée.
+ * Contrôle d'une colonne de solde, jour par jour. L'ordre des opérations d'une même journée varie selon les
+ * banques : on cherche un ordre dans lequel chaque ligne part du solde laissé par la précédente (solde de la
+ * ligne - montant = solde précédent), du solde de la veille au solde de fin de journée. Toutes les lignes sont
+ * contrôlées, y compris celles du premier jour, dont le solde de départ est déduit de la chaîne elle-même.
  */
 object BalanceChain {
     data class Line(val date: java.time.LocalDate, val amountCents: Long, val balanceCents: Long)
@@ -201,20 +208,47 @@ object BalanceChain {
     data class Result(val openingCents: Long?, val closingCents: Long?, val failedOn: java.time.LocalDate?)
 
     fun check(lines: List<Line>): Result {
-        val days = lines.groupBy { it.date }.toSortedMap().values.toList()
-        val first = days.first()
-        // Fin de la première journée : un de ses soldes ; on essaie d'abord celui de la dernière ligne.
-        val candidates = (listOf(first.last().balanceCents) + first.map { it.balanceCents }).distinct()
-        var failedOn: java.time.LocalDate? = null
-        for (firstEnd in candidates) {
-            var end = firstEnd
-            val broken = days.drop(1).firstOrNull { day ->
-                end += day.sumOf { it.amountCents }
-                day.none { it.balanceCents == end }
-            }
-            if (broken == null) return Result(firstEnd - first.sumOf { it.amountCents }, end, null)
-            if (failedOn == null) failedOn = broken.first().date
+        val days = lines.groupBy { it.date }.toSortedMap().entries.toList()
+        var start: Long? = null
+        var opening: Long? = null
+        for ((date, day) in days) {
+            val begin = start ?: firstDayStart(day) ?: return Result(null, null, date)
+            if (!chains(begin, day)) return Result(null, null, date)
+            if (opening == null) opening = begin
+            start = begin + day.sumOf { it.amountCents }
         }
-        return Result(null, null, failedOn)
+        return Result(opening, start, null)
+    }
+
+    /**
+     * Départ du premier jour : le seul solde « avant » (solde - montant) qui n'est le solde d'aucune ligne.
+     * Si la journée s'équilibre (somme nulle), le départ de la première ligne du fichier.
+     */
+    private fun firstDayStart(day: List<Line>): Long? {
+        val remaining = day.map { it.balanceCents }.toMutableList()
+        val unmatched = day.map { it.balanceCents - it.amountCents }.filter { !remaining.remove(it) }
+        return when {
+            unmatched.size == 1 -> unmatched.single()
+            unmatched.isEmpty() -> day.first().balanceCents - day.first().amountCents
+            else -> null
+        }
+    }
+
+    /** Vrai si les lignes forment une chaîne partant de [begin] (recherche d'un ordre, journées courtes). */
+    private fun chains(begin: Long, day: List<Line>): Boolean {
+        if (day.size > 200) return false
+        val used = BooleanArray(day.size)
+        fun walk(current: Long, count: Int): Boolean {
+            if (count == day.size) return true
+            for (i in day.indices) {
+                if (!used[i] && day[i].balanceCents - day[i].amountCents == current) {
+                    used[i] = true
+                    if (walk(day[i].balanceCents, count + 1)) return true
+                    used[i] = false
+                }
+            }
+            return false
+        }
+        return walk(begin, 0)
     }
 }

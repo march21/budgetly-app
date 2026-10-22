@@ -89,6 +89,29 @@ class TabularReadingTest {
     }
 
     @Test
+    fun `CSV avec solde sur une seule journee, chaque ligne controlee`() {
+        val mapping = CsvMapping(
+            headerRow = 0, firstDataRow = 1, dateColumn = 0, labelColumn = 1, amountColumn = 2, balanceColumn = 3,
+            dateFormat = "dd/MM/yyyy", decimalComma = true,
+        )
+        // Listées dans l'ordre inverse de la chaîne : 100,00 → 90,00 → 85,00.
+        val ok = CsvStatement.read(TabularText.rows("Date;Libelle;Montant;Solde\n01/03/2026;B;-5,00;85,00\n01/03/2026;A;-10,00;90,00\n", ';'), mapping)
+        assertEquals(emptyList(), ok.problems)
+        assertEquals(10_000L, ok.opening?.cents)
+        assertEquals(8_500L, ok.closing?.cents)
+
+        val wrong = CsvStatement.read(TabularText.rows("Date;Libelle;Montant;Solde\n01/03/2026;A;-10,00;90,00\n01/03/2026;B;-5,00;80,00\n", ';'), mapping)
+        assertEquals(1, wrong.problems.size)
+        assertTrue(wrong.problems.single().startsWith("Opérations du 01/03/2026"))
+    }
+
+    @Test
+    fun `en-tete, une ligne de preambule chiffree n'en est pas une`() {
+        val rows = TabularText.rows("Solde au 31/10/2026;1 234,56;Date d'export\nDate;Libelle;Montant\n01/10/2026;X;-1,00\n", ';')
+        assertEquals(1, CsvStatement.suggest(rows)?.headerRow)
+    }
+
+    @Test
     fun `CSV, lignes illisibles signalees sans leur contenu`() {
         val rows = TabularText.rows("Date;Libelle;Montant\n32/13/2026;X;1,00\n01/01/2026;Y;abc\n", ';')
         val mapping = CsvMapping(headerRow = 0, firstDataRow = 1, dateColumn = 0, labelColumn = 1, amountColumn = 2, dateFormat = "dd/MM/yyyy", decimalComma = true)

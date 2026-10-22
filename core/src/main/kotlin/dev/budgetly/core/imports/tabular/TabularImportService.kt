@@ -17,6 +17,7 @@ import org.springframework.aot.hint.annotation.RegisterReflectionForBinding
 import org.springframework.context.event.EventListener
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.security.SecureRandom
 import java.time.Clock
@@ -74,7 +75,8 @@ data class TabularPreviewRequest(
 /**
  * Import des exports CSV et OFX des banques. Même parcours que les relevés PDF (aperçu puis validation, tout ou
  * rien) et même exigence : deux soldes encadrent les opérations et doivent concorder avec elles.
- * Le fichier reste en mémoire 30 minutes au plus, le temps de choisir les colonnes ; il n'est jamais écrit.
+ * Le fichier reste en mémoire le temps de choisir les colonnes : oublié dès que l'aperçu est prêt, au verrouillage,
+ * et au plus tard après 30 minutes (purge chaque minute). Il n'est jamais écrit.
  */
 @Service
 @RegisterReflectionForBinding(CsvMapping::class, TabularAnalysis::class, TabularPreviewRequest::class, OfxSummary::class)
@@ -175,7 +177,10 @@ class TabularImportService(
             institution = account.institution,
             accounts = listOf(ParsedAccountStatement(account.ref, opening, closing, null, null, transactions)),
         )
-        return imports.previewStatement(file.hash, statement, looseDuplicates = true)
+        val preview = imports.previewStatement(file.hash, statement, looseDuplicates = true)
+        // L'aperçu prend le relais (lui-même limité à 30 minutes) : le fichier brut est oublié.
+        if (preview.status == PreviewStatus.READY) pending.remove(token)
+        return preview
     }
 
     private class Target(val ref: AccountRef, val institution: String)
@@ -233,7 +238,8 @@ class TabularImportService(
     @EventListener
     fun onLocked(event: VaultLockedEvent) = pending.clear()
 
-    private fun purgeExpired() {
+    @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    fun purgeExpired() {
         val limit = clock.instant().minus(Duration.ofMinutes(30))
         pending.entries.removeIf { it.value.createdAt.isBefore(limit) }
     }
