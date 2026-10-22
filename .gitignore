@@ -1,0 +1,30 @@
+# Vie privée : aucun relevé réel ni aucune base dans le dépôt
+*.pdf
+*.db
+*.db-journal
+*.db-wal
+.budgetly/
+
+# Cœur (Gradle / Kotlin)
+core/build/
+core/.gradle/
+core/.kotlin/
+
+# UI
+ui/node_modules/
+ui/dist/
+
+# Desktop
+desktop/src-tauri/target/
+desktop/src-tauri/binaries/
+desktop/src-tauri/gen/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+ui/tsconfig.tsbuildinfo
+
+# Python
+__pycache__/

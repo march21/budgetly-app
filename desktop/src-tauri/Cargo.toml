@@ -1,0 +1,14 @@
+[package]
+name = "budgetly-desktop"
+version = "0.3.0"
+description = "Coque desktop de Budgetly : lance le cœur en local et affiche l'interface"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+getrandom = "0.2"

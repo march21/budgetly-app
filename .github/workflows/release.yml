@@ -1,0 +1,188 @@
+name: Paquets desktop
+
+# Installeurs Windows (NSIS) et Linux (deb, AppImage). Chaque OS trace ses propres métadonnées natives
+# (bibliothèque SQLite et JNI AWT propres à la plateforme) avant de compiler l'image.
+# Coûteux (Windows ≈ 35 min) : jamais automatique sur une PR. Lancement manuel (Actions → « Run workflow »),
+# tag v*, ou PR étiquetée « paquets » (ou « metadonnees-natives » pour réexporter les traces Windows).
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Plateformes"
+        type: choice
+        options: [windows, linux, both]
+        default: windows
+      jvm_tests:
+        description: "Retracer sous l'agent (tests JVM + contrôle de dérive des métadonnées), ~8 min de plus"
+        type: boolean
+        default: false
+  push:
+    tags: ["v*"]
+  pull_request:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Paquet ${{ matrix.name }}
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'paquets') ||
+      contains(github.event.pull_request.labels.*.name, 'metadonnees-natives')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lancement manuel : seulement la ou les plateformes demandées (tag et PR : les deux).
+        exclude:
+          - name: ${{ inputs.platforms == 'windows' && 'Linux' || 'aucune' }}
+          - name: ${{ inputs.platforms == 'linux' && 'Windows' || 'aucune' }}
+        include:
+          - name: Windows
+            os: windows-latest
+            triple: x86_64-pc-windows-msvc
+            exe: .exe
+            libs: "*.dll"
+            python: python
+            graalvm: graalvm-community
+          - name: Linux
+            os: ubuntu-22.04
+            triple: x86_64-unknown-linux-gnu
+            exe: ""
+            libs: "*.so"
+            python: python3
+            graalvm: graalvm-community
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: UI
+        working-directory: ui
+        run: npm ci && npm run build
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: 21
+          distribution: ${{ matrix.graalvm }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gradle/actions/setup-gradle@v5
+      # Métadonnées versionnées (union Linux + Windows) ; ce que les tests tracent en plus sur cette plateforme
+      # est signalé et ajouté pour ce paquet.
+      - name: Tests JVM sous agent GraalVM (contrôle des métadonnées)
+        if: github.event_name != 'workflow_dispatch' || inputs.jvm_tests
+        working-directory: core
+        run: |
+          set -o pipefail
+          meta=src/main/resources/META-INF/native-image/dev.budgetly/core
+          cp -r $meta ../versionne
+          ./gradlew -Pagent test --no-daemon 2>&1 | tee gradle.log
+          ./gradlew metadataCopy --no-daemon 2>&1 | tee -a gradle.log
+          ${{ matrix.python }} ../.github/scripts/fix_native_metadata.py src/main/resources/META-INF/native-image
+          ${{ matrix.python }} ../.github/scripts/native_metadata.py missing ../versionne $meta
+      - name: Export des métadonnées tracées (PR étiquetée)
+        if: github.event_name == 'pull_request' && runner.os == 'Windows' && contains(github.event.pull_request.labels.*.name, 'metadonnees-natives')
+        working-directory: core
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: ../.github/scripts/export-metadata.sh src/main/resources/META-INF/native-image/dev.budgetly/core windows
+      - name: Image native
+        working-directory: core
+        run: |
+          set -o pipefail
+          ./gradlew nativeCompile -Pnative.diagnostics=true --no-daemon 2>&1 | tee -a gradle.log
+      - name: Erreurs Gradle en annotations
+        if: failure()
+        working-directory: core
+        run: |
+          ${{ matrix.python }} ../.github/scripts/report-failures.py gradle.log build/test-results
+          ${{ matrix.python }} - <<'EOF'
+          import pathlib, re
+          lines = pathlib.Path("gradle.log").read_text(errors="replace").splitlines()
+          i = next((n for n, l in enumerate(lines) if "PatternSyntaxException" in l and "unexpectedly failed" not in l), None)
+          if i is not None:
+              text = "\n".join(lines[max(0, i - 5): i + 45])
+              print("::error title=PatternSyntaxException::" + text[:6000].replace("%", "%25").replace("\n", "%0A"))
+          meta = pathlib.Path("src/main/resources/META-INF/native-image/dev.budgetly/core")
+          found = [m for f in meta.glob("*.json") for m in re.findall(r'"(?:pattern|glob)"\s*:\s*"([^"]*\\\\[^"]*)"', f.read_text(errors="replace"))]
+          found = [m for m in found if "\\\\" in m.removeprefix("\\\\Q").removesuffix("\\\\E")]
+          print("::warning title=Motifs avec antislash::" + (" | ".join(found[:40]) or "aucun").replace("%", "%25"))
+          EOF
+      - name: Emplacement des bibliothèques natives (diagnostic)
+        working-directory: core
+        run: |
+          ../.github/scripts/native-libs-check.sh build/native/nativeCompile
+          echo "::notice title=Bibliothèques natives ${{ matrix.name }}::$(cat native-libs.txt)"
+      - name: Sidecar et bibliothèques pour Tauri
+        run: |
+          out=core/build/native/nativeCompile
+          bin=desktop/src-tauri/binaries
+          mkdir -p $bin/lib
+          cp $out/budgetly-core${{ matrix.exe }} $bin/budgetly-core-${{ matrix.triple }}${{ matrix.exe }}
+          cp $out/${{ matrix.libs }} $bin/lib/
+          echo "::notice title=Bibliothèques livrées ${{ matrix.name }}::$(ls $bin/lib | tr '\n' ' ')"
+      - name: Dépendances système Tauri
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - name: Installeur
+        if: runner.os != 'Windows'
+        working-directory: desktop
+        run: |
+          set -o pipefail
+          npx --yes @tauri-apps/cli@2 build 2>&1 | tee tauri.log
+      # Sous Windows, le link.exe de Git Bash masque celui de MSVC : PowerShell.
+      - name: Installeur (Windows)
+        if: runner.os == 'Windows'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          npx --yes @tauri-apps/cli@2 build 2>&1 | Tee-Object -FilePath tauri.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Erreurs Tauri en annotations
+        if: failure()
+        working-directory: desktop
+        run: |
+          ${{ matrix.python }} ../.github/scripts/report-failures.py tauri.log /nonexistent
+          ${{ matrix.python }} - <<'EOF'
+          import pathlib
+          log = pathlib.Path("tauri.log")
+          text = "\n".join(log.read_text(errors="replace").splitlines()[-50:]) if log.exists() else "tauri.log absent"
+          print("::error title=tauri.log::" + text[:6000].replace("%", "%25").replace("\n", "%0A"))
+          EOF
+      - name: Installation silencieuse et cœur installé (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          setup=$(ls desktop/src-tauri/target/release/bundle/nsis/*-setup.exe | head -1)
+          "$setup" //S
+          sleep 5
+          .github/scripts/installed-check.sh
+          echo "::notice title=Installation Windows::$(cat installed.txt)"
+      - name: Contenu des paquets
+        run: |
+          cd desktop/src-tauri/target/release/bundle
+          echo "::notice title=Paquets ${{ matrix.name }}::$(find . -maxdepth 2 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.AppImage' \) -printf '%p (%k Ko) ' 2>/dev/null || find . -maxdepth 2 -type f)"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: budgetly-${{ matrix.name }}
+          path: |
+            desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/deb/*.deb
+          retention-days: 14

@@ -1,0 +1,228 @@
+name: CI
+
+# Dépôt public : minutes gratuites, tous les jobs (JVM, UI, natif) tournent sur chaque PR et sur main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  privacy-guard:
+    name: Aucun relevé réel dans le dépôt
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Aucun relevé, aucune base, aucun IBAN réel versionné
+        run: python3 tools/verifier-vie-privee.py
+
+  ui:
+    name: UI (React)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ui-dist
+          path: ui/dist
+          retention-days: 3
+
+  core-jvm:
+    name: Cœur (JVM + contrôle des métadonnées natives)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v5
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: 21
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gradle/actions/setup-gradle@v5
+      # Les métadonnées natives sont versionnées (union Linux + Windows). Les tests JVM tournent sous l'agent
+      # GraalVM : tout ce qu'ils tracent et que le jeu versionné ne couvre pas est signalé.
+      - name: Tests JVM sous agent GraalVM
+        shell: bash
+        run: |
+          set -o pipefail
+          meta=src/main/resources/META-INF/native-image/dev.budgetly/core
+          cp -r $meta "$RUNNER_TEMP/versionne"
+          ./gradlew -Pagent test --no-daemon 2>&1 | tee gradle.log
+          ./gradlew metadataCopy --no-daemon 2>&1 | tee -a gradle.log
+          python3 ../.github/scripts/fix_native_metadata.py src/main/resources/META-INF/native-image
+          python3 ../.github/scripts/native_metadata.py missing "$RUNNER_TEMP/versionne" $meta
+      - name: Erreurs en annotations
+        if: failure()
+        run: python3 ../.github/scripts/report-failures.py gradle.log build/test-results
+      # Pour régénérer le jeu versionné : étiquette « metadonnees-natives » sur la PR, puis union des exports.
+      - name: Export des métadonnées tracées (PR étiquetée)
+        if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'metadonnees-natives')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: ../.github/scripts/export-metadata.sh src/main/resources/META-INF/native-image/dev.budgetly/core linux
+
+  # Les images natives partent des métadonnées versionnées : elles se construisent en parallèle des tests JVM.
+  core-native-test:
+    name: Cœur (tests en natif)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v5
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: 21
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Tests en natif (PDFBox, base chiffrée, API)
+        shell: bash
+        run: ./gradlew nativeTest --no-daemon 2>&1 | tee gradle.log; exit ${PIPESTATUS[0]}
+      - name: Erreurs en annotations
+        if: failure()
+        run: python3 ../.github/scripts/report-failures.py gradle.log build/test-results
+
+  core-native:
+    name: Cœur (image native GraalVM)
+    runs-on: ubuntu-24.04
+    needs: ui
+    defaults:
+      run:
+        working-directory: core
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: ui-dist
+          path: ui/dist
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: 21
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Compilation de l'image native
+        shell: bash
+        run: ./gradlew nativeCompile --no-daemon 2>&1 | tee gradle-compile.log; exit ${PIPESTATUS[0]}
+      - name: Erreurs de compilation native en annotations
+        if: failure()
+        run: python3 ../.github/scripts/report-failures.py gradle-compile.log build/test-results
+      - name: Smoke test du binaire natif
+        env:
+          BUDGETLY_DATA_DIR: ${{ runner.temp }}/budgetly-data
+          BUDGETLY_LAUNCH_TOKEN: jeton-ci
+        run: |
+          ./build/native/nativeCompile/budgetly-core > core.log 2>&1 &
+          for i in $(seq 1 50); do
+            if curl -sf -b cookies.txt -c cookies.txt -L "http://127.0.0.1:47811/?launch=$BUDGETLY_LAUNCH_TOKEN" -o index.html; then break; fi
+            sleep 0.2
+          done
+          grep -q "<div id=\"root\">" index.html || { echo "::error::UI non servie"; tail -40 core.log; exit 1; }
+          curl -sf -b cookies.txt http://127.0.0.1:47811/api/health | tee health.json
+          grep -q '"vault":"UNINITIALIZED"' health.json || { echo '::error::Coffre attendu non initialisé'; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -b cookies.txt http://127.0.0.1:47811/api/accounts)
+          [ "$code" = "423" ] || { echo "::error::Données accessibles coffre verrouillé ($code)"; exit 1; }
+          curl -sf -b cookies.txt -H 'Content-Type: application/json' -d '{"password":"mot-de-passe-ci-123"}' http://127.0.0.1:47811/api/vault/setup
+          curl -sf -b cookies.txt http://127.0.0.1:47811/api/health | tee health.json
+          grep -q '"schemaVersion":"8"' health.json || { echo '::error::Migrations non appliquées après déverrouillage'; tail -40 core.log; exit 1; }
+          curl -sf -b cookies.txt http://127.0.0.1:47811/api/accounts | grep -q '^\[\]$' || { echo '::error::Liste des comptes KO'; exit 1; }
+          # Source de cours en natif (HTTPS, JSON) avec un ISIN public (TotalEnergies), sans rapport avec un portefeuille.
+          status=$(curl -s -m 60 -o diag.json -w '%{http_code}' -b cookies.txt "http://127.0.0.1:47811/api/dev/price-check?isin=FR0000120271" || echo "curl-$?")
+          echo "HTTP $status $(head -c 600 diag.json 2>/dev/null | tr -d '\n\r')" > price-diag.txt
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:47811/api/health)
+          [ "$code" = "401" ] || { echo "::error::Requête sans cookie acceptée ($code)"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -b cookies.txt -H 'Host: attaquant.example' http://127.0.0.1:47811/api/health)
+          [ "$code" = "403" ] || { echo "::error::Host étranger accepté ($code)"; exit 1; }
+          started=$(grep -oE "Started BudgetlyApplication in [0-9.]+ seconds" core.log || true)
+          size=$(du -h build/native/nativeCompile/budgetly-core | cut -f1)
+          libs=$(ls build/native/nativeCompile/*.so 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' ')
+          echo "::notice title=Image native::$started · binaire $size · libs : ${libs:-aucune}"
+      - name: Source de cours en natif (diagnostic)
+        if: always()
+        run: |
+          python3 - <<'EOF'
+          import pathlib
+          p = pathlib.Path("price-diag.txt")
+          text = p.read_text().strip() if p.exists() else "price-diag.txt absent"
+          level = "notice" if '"points":0' not in text and '"points":' in text else "warning"
+          print(f"::{level} title=Cours en natif::" + text.replace("%", "%25").replace("\n", "%0A"))
+          EOF
+      - name: Emplacement des bibliothèques natives (diagnostic)
+        if: success()
+        shell: bash
+        run: |
+          ../.github/scripts/native-libs-check.sh build/native/nativeCompile
+          echo "::notice title=Bibliothèques natives::$(cat native-libs.txt)"
+      - name: Logs du cœur en annotation
+        if: failure()
+        run: |
+          python3 - <<'EOF'
+          import pathlib
+          log = pathlib.Path("core.log")
+          text = "\n".join(log.read_text(errors="replace").splitlines()[-60:]) if log.exists() else "core.log absent"
+          print("::error title=core.log::" + text[:6000].replace("%", "%25").replace("\n", "%0A"))
+          EOF
+      - uses: actions/upload-artifact@v5
+        with:
+          # Binaire + bibliothèques natives (libawt…) qui doivent l'accompagner.
+          name: budgetly-core-linux-x86_64
+          path: core/build/native/nativeCompile/
+          retention-days: 7
+
+  desktop:
+    name: Coque desktop (Tauri)
+    runs-on: ubuntu-24.04
+    needs: core-native
+    defaults:
+      run:
+        working-directory: desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v5
+      - name: Dépendances système Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - uses: actions/download-artifact@v5
+        with:
+          name: budgetly-core-linux-x86_64
+          path: desktop/src-tauri/binaries
+      - name: Sidecar au nom attendu par Tauri, bibliothèques dans lib/
+        run: |
+          mv binaries/budgetly-core binaries/budgetly-core-x86_64-unknown-linux-gnu
+          chmod +x binaries/budgetly-core-x86_64-unknown-linux-gnu
+          mkdir -p binaries/lib
+          mv binaries/*.so binaries/lib/
+      - run: cargo build --locked 2>&1 | tee cargo.log; exit ${PIPESTATUS[0]}
+        shell: bash
+      - name: Erreurs Rust en annotations
+        if: failure()
+        run: python3 ../../.github/scripts/report-failures.py cargo.log /nonexistent

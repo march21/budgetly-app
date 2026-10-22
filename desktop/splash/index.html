@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Budgetly</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; height: 100vh; display: grid; place-items: center; background: Canvas; color: CanvasText; }
+      .failed { display: none; color: #b42318; }
+      body[data-state="failed"] .starting { display: none; }
+      body[data-state="failed"] .failed { display: block; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <p class="starting">Démarrage de Budgetly…</p>
+      <p class="failed">Le cœur de Budgetly n'a pas démarré.</p>
+    </div>
+  </body>
+</html>
