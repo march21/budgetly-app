@@ -103,12 +103,18 @@ fn stop_core(app: &AppHandle) {
     }
 }
 
-/// Réglage écrit par le cœur (`updates.json`, hors de la base chiffrée). Absent = vérification activée.
+/// Réglage écrit par le cœur (`updates.json`, hors de la base chiffrée). Absent = vérification activée ;
+/// présent mais illisible = désactivée (on ne passe jamais outre un refus possible).
 fn update_check_enabled(data_dir: &Path) -> bool {
-    match std::fs::read_to_string(data_dir.join("updates.json")) {
-        Ok(content) => !content.replace(' ', "").contains("\"checkAtStartup\":false"),
-        Err(_) => true,
+    let file = data_dir.join("updates.json");
+    if !file.exists() {
+        return true;
     }
+    std::fs::read_to_string(&file)
+        .ok()
+        .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+        .and_then(|value| value.get("checkAtStartup").and_then(|v| v.as_bool()))
+        .unwrap_or(false)
 }
 
 /// Une seule requête : `latest.json` de la dernière version publiée sur GitHub. Rien n'est envoyé.

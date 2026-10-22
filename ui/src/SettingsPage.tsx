@@ -226,8 +226,9 @@ function UpdatesSection() {
     <section className="settings-block" aria-labelledby="updates-title">
       <h2 id="updates-title">Mises à jour</h2>
       <p className="muted">
-        Au lancement, l'application demande à GitHub le numéro de la dernière version publiée. Aucune donnée n'est
-        envoyée ; une mise à jour n'est installée qu'avec votre accord, et sa signature est vérifiée.
+        Au lancement, l'application demande à GitHub le numéro de la dernière version publiée. Aucune donnée de
+        l'application n'est envoyée ; GitHub voit seulement votre adresse IP et l'heure de la vérification. Une mise à
+        jour n'est installée qu'avec votre accord, après vérification de sa signature.
       </p>
       <div className="segmented" role="radiogroup" aria-labelledby="updates-title">
         <button role="radio" aria-checked={enabled} className={enabled ? "active" : ""} onClick={() => choose(true)}>

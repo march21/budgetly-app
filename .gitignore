@@ -12,6 +12,7 @@ core/.kotlin/
 
 # UI
 ui/node_modules/
+desktop/node_modules/
 ui/dist/
 
 # Desktop

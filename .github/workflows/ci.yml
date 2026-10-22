@@ -20,7 +20,7 @@ jobs:
     name: Aucun relevé réel dans le dépôt
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Aucun relevé, aucune base, aucun IBAN réel versionné
         run: python3 tools/verifier-vie-privee.py
 
@@ -31,15 +31,15 @@ jobs:
       run:
         working-directory: ui
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: ui/package-lock.json
       - run: npm ci
       - run: npm run build
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: ui-dist
           path: ui/dist
@@ -55,13 +55,13 @@ jobs:
       run:
         working-directory: core
     steps:
-      - uses: actions/checkout@v5
-      - uses: graalvm/setup-graalvm@v1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173 # v1.6.7
         with:
           java-version: 21
           distribution: graalvm-community
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       # Les métadonnées natives sont versionnées (union Linux + Windows). Les tests JVM tournent sous l'agent
       # GraalVM : tout ce qu'ils tracent et que le jeu versionné ne couvre pas est signalé.
       - name: Tests JVM sous agent GraalVM
@@ -93,13 +93,13 @@ jobs:
       run:
         working-directory: core
     steps:
-      - uses: actions/checkout@v5
-      - uses: graalvm/setup-graalvm@v1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173 # v1.6.7
         with:
           java-version: 21
           distribution: graalvm-community
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Tests en natif (PDFBox, base chiffrée, API)
         shell: bash
         run: ./gradlew nativeTest --no-daemon 2>&1 | tee gradle.log; exit ${PIPESTATUS[0]}
@@ -115,17 +115,17 @@ jobs:
       run:
         working-directory: core
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: ui-dist
           path: ui/dist
-      - uses: graalvm/setup-graalvm@v1
+      - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173 # v1.6.7
         with:
           java-version: 21
           distribution: graalvm-community
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Compilation de l'image native
         shell: bash
         run: ./gradlew nativeCompile --no-daemon 2>&1 | tee gradle-compile.log; exit ${PIPESTATUS[0]}
@@ -187,7 +187,7 @@ jobs:
           text = "\n".join(log.read_text(errors="replace").splitlines()[-60:]) if log.exists() else "core.log absent"
           print("::error title=core.log::" + text[:6000].replace("%", "%25").replace("\n", "%0A"))
           EOF
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           # Binaire + bibliothèques natives (libawt…) qui doivent l'accompagner.
           name: budgetly-core-linux-x86_64
@@ -202,16 +202,18 @@ jobs:
       run:
         working-directory: desktop/src-tauri
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Dépendances système Tauri
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: desktop/src-tauri
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: budgetly-core-linux-x86_64
           path: desktop/src-tauri/binaries
