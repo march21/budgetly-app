@@ -317,8 +317,10 @@ export function TabularImportPanel({ fileName, analysis, onPreview, onCancel }: 
         <section className="settings-block" aria-labelledby="tabular-balances">
           <h2 id="tabular-balances">Soldes de contrôle</h2>
           <p className="muted">
-            Le fichier ne donne pas {needsOpening && needsClosing ? "les soldes" : "le solde de départ"} : saisissez-les tels qu'affichés par votre
-            banque. L'import n'est accepté que si les opérations du fichier passent exactement de l'un à l'autre.
+            {needsOpening && needsClosing
+              ? "Le fichier ne donne pas les soldes : saisissez-les tels qu'affichés par votre banque."
+              : "Le fichier ne donne pas le solde de départ : saisissez-le tel qu'affiché par votre banque."}{" "}
+            L'import n'est accepté que si les opérations du fichier passent exactement d'un solde à l'autre.
           </p>
           <div className="form-row">
             {needsOpening && (
