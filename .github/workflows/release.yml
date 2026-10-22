@@ -42,7 +42,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Lancement manuel : seulement la ou les plateformes demandées (tag et PR : les deux).
+        # Lancement manuel : seulement la ou les plateformes demandées (tag et PR : les deux). L'exclusion ne
+        # s'applique qu'à une clé de la matrice de base, d'où « name » listé ici et complété par « include ».
+        name: [Windows, Linux]
         exclude:
           - name: ${{ inputs.platforms == 'windows' && 'Linux' || 'aucune' }}
           - name: ${{ inputs.platforms == 'linux' && 'Windows' || 'aucune' }}
