@@ -8,7 +8,7 @@ object TabularFixtures {
 
     /**
      * Style « débit / crédit » : préambule, séparateur « ; », virgule décimale, du plus récent au plus ancien,
-     * encodé en Windows-1252, sans colonne de solde. Solde avant : 1 000,00 ; après : 1 000,00 - 54,30 - 12,00 + 1 500,00 - 700,00 = 1 733,70.
+     * encodé en Windows-1252, sans colonne de solde, guillemets doublés dans un libellé (écrits « '' » ici). Solde avant : 1 000,00 ; après : 1 000,00 - 54,30 - 12,00 + 1 500,00 - 700,00 = 1 733,70.
      */
     const val debitCreditOpening = 100_000L
     const val debitCreditClosing = 173_370L
@@ -19,8 +19,8 @@ object TabularFixtures {
         28/10/2026;"PRLV LOYER EXEMPLE";700,00;
         15/10/2026;VIR SALAIRE SOCIETE EXEMPLE;;1 500,00
         03/10/2026;CB BOULANGERIE EXEMPLE 02/10;12,00;
-        01/10/2026;"CB EPICERIE ""CHEZ EXEMPLE""";54,30;
-    """.trimIndent().replace("\n", "\r\n").toByteArray(charset("windows-1252"))
+        01/10/2026;"CB EPICERIE ''CHEZ EXEMPLE''";54,30;
+    """.trimIndent().replace("''", "\"\"").replace("\n", "\r\n").toByteArray(charset("windows-1252"))
 
     /**
      * Style « montant signé + solde » : séparateur « , », guillemets, point décimal, ordre chronologique, deux

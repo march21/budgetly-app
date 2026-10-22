@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { api, ApiError, type ImportPreview, type ImportRecord } from "./api";
+import { api, ApiError, type ImportPreview, type ImportRecord, type TabularAnalysis } from "./api";
+import { isTabularFile, TabularImportPanel } from "./TabularImport";
 import { Amount } from "./Amount";
 import { kindLabel, longDate, noIsinLabel, shortDate, timestamp } from "./format";
 
@@ -12,6 +13,7 @@ type Step =
   | { kind: "saving"; preview: ImportPreview }
   | { kind: "done"; record: ImportRecord }
   | { kind: "batch"; items: BatchItem[]; running: boolean }
+  | { kind: "tabular"; fileName: string; analysis: TabularAnalysis }
   | { kind: "error"; message: string };
 
 /** Un fichier d'un dépôt multiple : aperçu, puis résultat de la validation. */
@@ -39,7 +41,16 @@ export function ImportsPage({ onImported, onCancelled, onShowTransactions }: Pro
   useEffect(loadHistory, []);
 
   async function readAll(list: FileList | null | undefined) {
-    const files = [...(list ?? [])].filter((f) => f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf");
+    const all = [...(list ?? [])];
+    const tabular = all.filter(isTabularFile);
+    const files = all.filter((f) => f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf");
+    if (files.length === 0 && tabular.length > 0) {
+      if (tabular.length > 1) {
+        setStep({ kind: "error", message: "Déposez les exports CSV ou OFX un par un : chacun demande de choisir son compte." });
+        return;
+      }
+      return readTabular(tabular[0]);
+    }
     if (files.length <= 1) return read(files[0] ?? list?.[0]);
     setStep({ kind: "reading" });
     const items: BatchItem[] = [];
@@ -74,6 +85,22 @@ export function ImportsPage({ onImported, onCancelled, onShowTransactions }: Pro
     setStep({ kind: "batch", items: [...next], running: false });
     onImported();
     loadHistory();
+  }
+
+  async function readTabular(file: File) {
+    setStep({ kind: "reading" });
+    try {
+      const analysis = await api.analyzeTabular(file);
+      if (analysis.alreadyImported) {
+        setStep({ kind: "error", message: "Ce fichier a déjà été importé." });
+      } else {
+        setStep({ kind: "tabular", fileName: file.name, analysis });
+      }
+    } catch (e) {
+      setStep({ kind: "error", message: e instanceof ApiError ? e.message : "Le fichier n'a pas pu être lu." });
+    } finally {
+      if (input.current) input.current.value = "";
+    }
   }
 
   async function read(file: File | undefined) {
@@ -163,15 +190,16 @@ export function ImportsPage({ onImported, onCancelled, onShowTransactions }: Pro
           <input
             ref={input}
             type="file"
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,.csv,text/csv,.ofx,.qfx"
             multiple
             className="visually-hidden"
             onChange={(e) => readAll(e.target.files)}
           />
-          <span className="dropzone-title">Déposez un ou plusieurs relevés PDF ici, ou cliquez pour les choisir</span>
+          <span className="dropzone-title">Déposez un ou plusieurs relevés PDF, ou un export CSV / OFX, ici ou cliquez pour les choisir</span>
           <span className="muted">
-            Relevés de comptes La Banque Postale, évaluation de PEA EasyBourse, bulletin annuel EasyVie, avis d'opération Natixis (PEE). Le fichier est lu
-            sur cet ordinateur puis oublié : seule son empreinte est conservée.
+            Relevés de comptes La Banque Postale, évaluation de PEA EasyBourse, bulletin annuel EasyVie, avis d'opération Natixis (PEE). Pour les
+            autres banques : l'export CSV ou OFX de vos opérations. Le fichier est lu sur cet ordinateur puis oublié : seule son empreinte est
+            conservée.
           </span>
         </label>
       )}
@@ -185,6 +213,15 @@ export function ImportsPage({ onImported, onCancelled, onShowTransactions }: Pro
           onCommit={() => commitBatch(step.items)}
           onClose={() => setStep({ kind: "idle" })}
           onShowTransactions={onShowTransactions}
+        />
+      )}
+
+      {step.kind === "tabular" && (
+        <TabularImportPanel
+          fileName={step.fileName}
+          analysis={step.analysis}
+          onPreview={(preview) => setStep({ kind: "preview", preview })}
+          onCancel={() => setStep({ kind: "idle" })}
         />
       )}
 
