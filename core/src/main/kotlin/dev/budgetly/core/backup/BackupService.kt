@@ -79,7 +79,7 @@ class BackupService(
 
         vault.withExclusiveAccess { connection ->
             val schema = connection.createStatement().use { st ->
-                st.executeQuery("select max(version) from flyway_schema_history where success = 1").use { rs ->
+                st.executeQuery("select version from flyway_schema_history where success = 1 and version is not null order by cast(version as integer) desc limit 1").use { rs ->
                     if (rs.next()) rs.getString(1) else null
                 }
             }

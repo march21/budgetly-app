@@ -66,10 +66,12 @@ export const percent = (value: number) =>
 
 /** « 300 » ou « 300,50 » saisi par l'utilisateur → centimes. */
 export function parseEuros(text: string): number | null {
-  const cleaned = text.replace(/\s|€/g, "").replace(",", ".");
+  const cleaned = text.replace(/[\s\u00a0\u202f€]/g, "").replace(",", ".");
   if (cleaned === "") return null;
-  const value = Number(cleaned);
-  return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) : NaN;
+  // Calcul en entiers (pas de flottant) : euros × 100 + centimes.
+  const match = /^\+?(\d+)(?:\.(\d{1,2}))?$/.exec(cleaned);
+  if (!match) return NaN;
+  return Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
 }
 
 export const kindName: Record<string, string> = {
