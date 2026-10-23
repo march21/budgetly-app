@@ -173,6 +173,30 @@ export type AnnualReview = {
   monthsWithData: number;
 };
 
+export type TaxItem = { code: string; cents: number; transactionCount: number; estimatedBenefitCents: number | null };
+export type TaxAidReport = {
+  year: number;
+  regulatedInterest: TaxItem;
+  taxableInterest: TaxItem;
+  donations: TaxItem;
+  donationsHelp: TaxItem;
+  homeServices: TaxItem;
+  childcare: TaxItem;
+  retirementSavings: TaxItem;
+  taxesPaid: TaxItem;
+  rules: {
+    verifiedOn: string;
+    donationRatePercent: number;
+    donationHelpRatePercent: number;
+    donationHelpCeilingCents: number;
+    homeServicesRatePercent: number;
+    homeServicesCeilingCents: number;
+    childcareRatePercent: number;
+    childcareCeilingPerChildCents: number;
+    fromYear: number;
+  };
+};
+
 export type Goal = {
   id: number;
   name: string;
@@ -537,6 +561,7 @@ export const api = {
   createLoan: (body: LoanRequest) => request<{ id: number }>("/api/loans", json(body)),
   updateLoan: (id: number, body: LoanRequest) => request<void>(`/api/loans/${id}`, { ...json(body), method: "PUT" }),
   deleteLoan: (id: number) => request<void>(`/api/loans/${id}`, { method: "DELETE" }),
+  taxAid: (year: number) => request<TaxAidReport>(`/api/summary/tax?year=${year}`),
   annual: (year: number) => request<AnnualReview>(`/api/summary/year?year=${year}`),
   annualPdfUrl: (year: number) => `/api/summary/year/report.pdf?year=${year}`,
   createGoal: (body: GoalRequest) => request<{ id: number }>("/api/goals", json(body)),

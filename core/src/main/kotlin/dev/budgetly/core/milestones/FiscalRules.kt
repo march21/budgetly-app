@@ -10,6 +10,12 @@ object FiscalRules {
     /** Vérifiées le 23/10/2026 (service-public.fr F2385, F2329, F2365, F2368 ; assurance vie : Linxea). */
     val VERIFIED_ON: LocalDate = LocalDate.of(2026, 10, 23)
 
+    /**
+     * Première année de revenus couverte par les règles de l'aide à la déclaration (plafond de 2 000 € des dons aux
+     * personnes en difficulté sur toute l'année). Pour les années antérieures, seuls les totaux sont donnés.
+     */
+    const val TAX_AID_FROM_YEAR = 2026
+
     /** PEA : retraits partiels sans clôture et gains exonérés d'impôt sur le revenu après 5 ans. */
     const val PEA_YEARS = 5L
     const val PEA_CEILING_CENTS = 15_000_000L
@@ -26,6 +32,20 @@ object FiscalRules {
     /** Prélèvements sociaux sur les gains : taux général 2026 ; assurance vie, PEL, CEL au taux de 17,2 %. */
     const val SOCIAL_LEVIES_GENERAL = 0.186
     const val SOCIAL_LEVIES_LIFE_INSURANCE = 0.172
+
+    /**
+     * Aide à la déclaration. Dons : 66 % ; 75 % pour les organismes d'aide aux personnes en difficulté (repas,
+     * soins, logement, victimes de violences), dans la limite de 2 000 € de dons depuis le 14/10/2025 (loi de
+     * finances 2026, 1 000 € avant). Emploi à domicile : crédit de 50 % de 12 000 € de dépenses au plus (hors
+     * majorations). Garde d'enfants de moins de 6 ans hors du domicile : 50 % de 3 500 € par enfant au plus.
+     */
+    const val DONATION_RATE_PERCENT = 66
+    const val DONATION_HELP_RATE_PERCENT = 75
+    const val DONATION_HELP_CEILING_CENTS = 200_000L
+    const val HOME_SERVICES_RATE_PERCENT = 50
+    const val HOME_SERVICES_CEILING_CENTS = 1_200_000L
+    const val CHILDCARE_RATE_PERCENT = 50
+    const val CHILDCARE_CEILING_PER_CHILD_CENTS = 350_000L
 
     /** Un repère « bientôt » : échéance à moins de 6 mois, plafond à 90 % ou plus. */
     const val SOON_MONTHS = 6L

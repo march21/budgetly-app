@@ -97,7 +97,7 @@ Règles françaises, codées dans `milestones/FiscalRules.kt`, **vérifiées le 
 - **Assurance vie** après 8 ans : abattement annuel de 4 600 € sur les gains retirés (9 200 € pour un couple), puis 7,5 % (12,8 % sur la part des versements au-delà de 150 000 €, versements depuis le 27/09/2017). L'abattement vaut pour l'ensemble des contrats du foyer, pas par contrat (l'interface le précise une seule fois). Source : [Linxea, fiscalité après 8 ans](https://www.linxea.com/lexique/assurance-vie/assurance-vie-fiscalite-apres-8-ans/) (courtier ; fiche service-public.fr non consultable depuis l'environnement de développement, à substituer).
 - **Livrets** : plafonds des versements Livret A 22 950 €, LDDS 12 000 € ; les intérêts capitalisés peuvent les dépasser. Sources : [service-public.fr F2365](https://www.service-public.gouv.fr/particuliers/vosdroits/F2365) et [F2368](https://www.service-public.gouv.fr/particuliers/vosdroits/F2368) (mises à jour du 01/08/2026).
 - **Date d'ouverture** d'une enveloppe (premier versement) : absente des relevés lus, saisie par l'utilisateur (migration V9). Sans elle, l'échéance est signalée « à compléter ».
-- Repère « bientôt » : échéance à moins de 6 mois, plafond à 90 % (comparaison en entiers). Échéance du PEE : date de disponibilité des avoirs (non versés automatiquement), montant à la valeur du dernier relevé. Repères indicatifs, jamais présentés comme un conseil fiscal. Le récapitulatif annuel pour la déclaration (intérêts, dividendes, retraits) reste à faire (#5).
+- Repère « bientôt » : échéance à moins de 6 mois, plafond à 90 % (comparaison en entiers). Échéance du PEE : date de disponibilité des avoirs (non versés automatiquement), montant à la valeur du dernier relevé. Repères indicatifs, jamais présentés comme un conseil fiscal.
 
 ## 4 quater. Sauvegardes, mot de passe, annulation
 - **Sauvegarde** = archive `.budgetly` contenant la base **telle qu'elle est sur disque (chiffrée)**, `vault.json` (sel et paramètres Argon2id) et un en-tête sans donnée personnelle. Copie faite en tenant l'unique connexion du pool : personne n'écrit pendant la copie. Restaurer demande le mot de passe en vigueur à la création de la sauvegarde.
@@ -146,6 +146,17 @@ Règles françaises, codées dans `milestones/FiscalRules.kt`, **vérifiées le 
 ## 9. Questions ouvertes
 - Couverture réelle de Yahoo Finance sur les ISIN détenus : affichée par l'application à chaque « Actualiser les cours » ; envisager une seconde source si trop de supports restent introuvables (fonds non cotés en bourse surtout).
 
+## 4 septies. Aide à la déclaration annuelle
+Récapitulatif d'une année civile (`/api/summary/tax`, par défaut l'année précédente) dans la page Bilan, d'après les **opérations catégorisées** (ventilations comprises, virements internes exclus). Règles dans `FiscalRules.kt`, **vérifiées le 23/10/2026**.
+- **Catégories dédiées** (migration V12, non système) : Dons, et sa sous-catégorie Dons aux personnes en difficulté ; Emploi à domicile ; Garde d'enfants hors du domicile ; Épargne retraite (PER). Une catégorie de même nom déjà créée par l'utilisateur au même niveau est reprise (elle reçoit le code). Rien n'est deviné à partir des libellés.
+- **Intérêts** séparés selon le compte : Livret A et LDDS exonérés (rien à déclarer) ; comptes courants et livrets ordinaires imposables (en général déjà prélevés à la source ; l'IFU fait foi ; un LEP, typé livret ordinaire faute de type dédié, est signalé à retirer) ; intérêts crédités dans un PEA, une assurance vie ou un PEE ignorés (non déclarés l'année du crédit).
+- **Dons** : 66 % ; dons aux personnes en difficulté 75 % jusqu'à 2 000 € (1 000 € pour les dons antérieurs au 14/10/2025), le surplus à 66 %. La limite de 20 % du revenu imposable n'est pas appliquée (revenu inconnu), seulement rappelée. Sources : [Legifiscal, PLF 2026](https://www.legifiscal.fr/actualites-fiscales/4270-plf-2026-plafond-reduction-impot-dons-coluche-portee-2000.html), [Moneyvox](https://www.moneyvox.fr/impot/actualites/107679/dons-coluche-trois-questions-cruciales-sur-cette-reduction-impot-qui-a-augmente).
+- **Emploi à domicile** : crédit de 50 % dans la limite de 12 000 € de dépenses (majorations non appliquées, aides et avance immédiate à déduire). Source : [Fiscaloo](https://www.fiscaloo.fr/12154-credit-dimpot-service-a-la-personne/).
+- **Garde hors du domicile** (enfant de moins de 6 ans) : 50 % dans la limite de 3 500 € par enfant ; pas d'estimation (nombre d'enfants et aides inconnus). Source : [Moneyvox / Selectra](https://selectra.info/finance/actualites/marche/credit-impot-creche-assistante-maternelle-6-ans).
+- **PER** : versements totalisés, déductibles dans le plafond de l'avis d'imposition ; pas d'estimation (taux marginal inconnu). Un versement vers un PER lui-même importé devient un virement interne et n'est pas compté (limite affichée).
+- **Années** : de 2000 à l'année en cours ; avantages estimés seulement à partir des revenus 2026 (`TAX_AID_FROM_YEAR`), première année entièrement couverte par le plafond de 2 000 € ; avant, totaux seuls. Titre « revenus N, à déclarer en N+1 », année en cours signalée provisoire.
+- Avantages arrondis à l'euro inférieur, calculs en centimes entiers. Sources secondaires faute d'accès aux fiches service-public.fr depuis l'environnement de développement, à substituer ; l'interface le dit et renvoie à impots.gouv.fr. Toujours présenté comme une estimation, jamais comme un conseil fiscal.
+
 ## 9 bis. Feuille de route
 Suivie dans les issues GitHub, par ordre de priorité :
 1. Import CSV / OFX générique (#3) — condition de l'adoption par d'autres banques que celles couvertes.
@@ -157,6 +168,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
+- 23/10/2026 — Version 0.11.0. Aide à la déclaration (#5, second volet) : intérêts exonérés ou imposables, dons (66 % et 75 %), emploi à domicile, garde d'enfants, versements PER et impôts payés, avec avantage estimé. Migration V12 (catégories fiscales).
 - 23/10/2026 — Version 0.10.0. Crédits (#8) : tableau d'amortissement, capital restant dû déduit du patrimoine (aussi en fin de mois), détail intérêts / capital de la prochaine échéance, échéances retrouvées dans les opérations. Migration V11.
 - 23/10/2026 — Version 0.9.0. Bilan de l'année (#7) : comparaison à la même période de l'année précédente, hausses et baisses, mois par mois, export PDF généré localement.
 - 23/10/2026 — Version 0.8.0. Objectifs d'épargne (#6) : suivi par un compte ou à la main, effort mensuel nécessaire, date d'atteinte estimée ; taux d'épargne moyen sur la période de l'historique. Migration V10.
