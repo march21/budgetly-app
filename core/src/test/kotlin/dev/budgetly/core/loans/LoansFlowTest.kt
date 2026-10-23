@@ -92,6 +92,23 @@ class LoansFlowTest(
         assertEquals(debt, worth["monthly"].last()["debtCents"].asLong())
         assertTrue(worth["monthly"].first()["month"].asText() <= first.minusMonths(1).toString().take(7))
 
+        // Un crédit dont les fonds ne sont pas encore débloqués (première échéance dans six mois) ne compte pas :
+        // ni aujourd'hui, ni dans l'historique des fins de mois.
+        mvc.post("/api/loans") {
+            contentType = MediaType.APPLICATION_JSON
+            content = body(mapOf("name" to "Futur", "principalCents" to 5_000_000, "annualRate" to "2", "firstPaymentDate" to today.plusMonths(6).toString(), "termMonths" to 60))
+        }.andExpect { status { isCreated() } }
+        val later = get("/api/portfolio")
+        assertEquals(debt, later["debtCents"].asLong())
+        assertTrue(later["monthly"].all { it["debtCents"].asLong() <= debt })
+        mvc.delete("/api/loans/${get("/api/loans").single { it["name"].asText() == "Futur" }["id"].asLong()}").andExpect { status { isNoContent() } }
+        for (invalid in listOf(
+            mapOf("name" to "X", "principalCents" to 100, "annualRate" to "1", "firstPaymentDate" to "1900-01-01", "termMonths" to 12),
+            mapOf("name" to "X", "principalCents" to 100, "annualRate" to "1", "firstPaymentDate" to "2026-01-01", "termMonths" to 12, "paymentLabel" to "´´"),
+        )) {
+            mvc.post("/api/loans") { contentType = MediaType.APPLICATION_JSON; content = body(invalid) }.andExpect { status { isBadRequest() } }
+        }
+
         // Modification et suppression.
         mvc.put("/api/loans/${works["id"].asLong()}") {
             contentType = MediaType.APPLICATION_JSON

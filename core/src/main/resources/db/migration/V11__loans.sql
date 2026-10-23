@@ -7,7 +7,7 @@ CREATE TABLE loan (
     lender                  TEXT,
     principal_cents         INTEGER NOT NULL CHECK (principal_cents > 0 AND principal_cents <= 100000000000),
     annual_rate             TEXT    NOT NULL,
-    first_payment_date      TEXT    NOT NULL,
+    first_payment_date      TEXT    NOT NULL CHECK (first_payment_date BETWEEN '1950-01-01' AND '2100-12-31'),
     term_months             INTEGER NOT NULL CHECK (term_months BETWEEN 1 AND 480),
     insurance_monthly_cents INTEGER CHECK (insurance_monthly_cents BETWEEN 0 AND 100000000),
     payment_label           TEXT,

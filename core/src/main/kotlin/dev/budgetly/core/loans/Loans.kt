@@ -79,10 +79,24 @@ class LoanService(private val jdbc: JdbcClient, private val clock: Clock) {
         return Amortization.schedule(r.principalCents, r.rate, r.term, r.first)
     }
 
-    /** Capital restant dû total à une date (patrimoine net, fins de mois). */
-    fun outstandingAt(date: LocalDate): Long = rows().sumOf { r ->
-        Amortization.schedule(r.principalCents, r.rate, r.term, r.first).lastOrNull { !it.date.isAfter(date) }?.remainingCents
-            ?: if (r.first.isAfter(date)) r.principalCents else 0L
+    /** Capital restant dû total à une date (patrimoine net). */
+    fun outstandingAt(date: LocalDate): Long = outstandingAt(listOf(date)).single()
+
+    /**
+     * Capital restant dû total à chaque date, tableaux calculés une seule fois. Un crédit compte à partir du mois
+     * précédant sa première échéance (déblocage des fonds) : 0 avant, le montant emprunté jusqu'à la première échéance.
+     */
+    fun outstandingAt(dates: List<LocalDate>): List<Long> {
+        val loans = rows().map { r -> r to Amortization.schedule(r.principalCents, r.rate, r.term, r.first) }
+        return dates.map { date ->
+            loans.sumOf { (r, schedule) ->
+                when {
+                    date.isBefore(r.first.minusMonths(1)) -> 0L
+                    date.isBefore(r.first) -> r.principalCents
+                    else -> schedule.last { !it.date.isAfter(date) }.remainingCents
+                }
+            }
+        }
     }
 
     /** Date de début des crédits (un crédit compte à partir du mois précédant sa première échéance). */
@@ -161,6 +175,10 @@ class LoanService(private val jdbc: JdbcClient, private val clock: Clock) {
         if (r.termMonths !in 1..480) invalid("La durée doit être comprise entre 1 et 480 mois.")
         if ((r.insuranceMonthlyCents ?: 0) !in 0..100_000_000L) invalid("Montant d'assurance invalide.")
         if ((r.paymentLabel?.length ?: 0) > 80 || (r.lender?.length ?: 0) > 80) invalid("Texte trop long (80 caractères au plus).")
+        if (r.firstPaymentDate.year !in 1950..2100) invalid("Date de première échéance entre 1950 et 2100.")
+        if (r.paymentLabel != null && r.paymentLabel.isNotBlank() && normalize(r.paymentLabel).none(Char::isLetterOrDigit)) {
+            invalid("Le libellé du prélèvement doit contenir des lettres ou des chiffres.")
+        }
         val rate = r.annualRate.trim().replace(',', '.').toBigDecimalOrNull() ?: invalid("Taux illisible : par exemple 3,25.")
         if (rate.signum() < 0 || rate > BigDecimal(20) || rate.scale() > 4) invalid("Taux annuel entre 0 et 20 %, quatre décimales au plus.")
         return rate

@@ -80,7 +80,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 ## 4 octies. Crédits
 - Crédits **saisis à la main** (aucun relevé de prêt lu) : montant emprunté, taux nominal annuel (décimal exact, 0 à 20 %), date de première échéance, durée (1 à 480 mois), assurance mensuelle facultative, libellé du prélèvement facultatif.
 - **Échéances constantes** : M = P × r × (1+r)ⁿ / ((1+r)ⁿ − 1), r = taux / 12 ; intérêts du mois = capital restant × r, arrondis au centime ; la dernière échéance solde l'écart d'arrondi. Calcul en `BigDecimal`, jamais en flottants. L'assurance s'ajoute à l'échéance sans réduire le capital. Remboursement anticipé, différé et taux variable non gérés (le crédit se modifie).
-- **Patrimoine net** = avoirs − capital restant dû (échéances passées au jour près) ; aussi en fin de mois. `totalCents` reste le total des avoirs (répartition inchangée), `netCents` et `debtCents` s'y ajoutent.
+- **Patrimoine net** = avoirs − capital restant dû (échéances passées au jour près) ; aussi en fin de mois. Un crédit compte à partir du mois précédant sa première échéance (déblocage), pour le montant emprunté jusqu'à cette échéance ; avant, rien. Première échéance entre 1950 et 2100. `totalCents` reste le total des avoirs (répartition inchangée), `netCents` et `debtCents` s'y ajoutent.
 - **Échéances retrouvées** : opérations de débit dont le libellé contient le texte donné et dont le montant vaut l'échéance (assurance comprise) à 1 € près ; seulement compter et dater, rien n'est modifié dans les opérations.
 
 ## 4 sexies. Objectifs d'épargne

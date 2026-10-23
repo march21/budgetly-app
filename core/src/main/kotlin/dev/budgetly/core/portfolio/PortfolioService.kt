@@ -189,7 +189,8 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock, p
             series[e.accountId] = (series[e.accountId].orEmpty() + Triple(e.valueDate, e.valueCents, true)).sortedBy { it.first }
         }
         val first = listOfNotNull(series.values.flatten().minOfOrNull { it.first }, loans.earliestStart()).minOrNull() ?: return emptyList()
-        var month = java.time.YearMonth.from(first)
+        // Dix ans au plus : la série est de toute façon limitée à 120 mois.
+        var month = maxOf(java.time.YearMonth.from(first), java.time.YearMonth.from(today).minusMonths(119))
         val last = java.time.YearMonth.from(today)
         val points = mutableListOf<MonthlyNetWorth>()
         while (month <= last) {
@@ -202,10 +203,12 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock, p
                 if (types[id]?.let { it in INVESTMENT_TYPES } == true) invested += point.second else liquid += point.second
                 estimated = estimated || point.third
             }
-            points += MonthlyNetWorth(month.toString(), date, liquid, invested, estimated, loans.outstandingAt(date))
+            points += MonthlyNetWorth(month.toString(), date, liquid, invested, estimated)
             month = month.plusMonths(1)
         }
-        return points.takeLast(120)
+        val kept = points.takeLast(120)
+        val debts = loans.outstandingAt(kept.map { it.date })
+        return kept.mapIndexed { i, p -> p.copy(debtCents = debts[i]) }
     }
 
     /** Valeurs datées par compte : soldes de relevé des comptes, valorisations des enveloppes. */
