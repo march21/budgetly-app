@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type AnnualLine, type AnnualReview } from "./api";
 import { Amount } from "./Amount";
-import { amount, percent } from "./format";
+import { amount, percent, signedAmount } from "./format";
 
 const monthShort = new Intl.DateTimeFormat("fr-FR", { month: "short" });
 const monthLong = new Intl.DateTimeFormat("fr-FR", { month: "long" });
@@ -110,7 +110,7 @@ function Moves({ title, lines }: { title: string; lines: AnnualLine[] }) {
           <li key={l.categoryId ?? l.name}>
             <span>{l.name}</span>
             <span className="num">
-              <Amount cents={l.deltaCents} signed /> <span className="muted">({change(l.cents, l.previousCents)})</span>
+              {signedAmount(l.deltaCents)} <span className="muted">({change(l.cents, l.previousCents)})</span>
             </span>
           </li>
         ))}
@@ -142,7 +142,7 @@ function LinesTable({ title, lines, year }: { title: string; lines: AnnualLine[]
                 </td>
                 <td className="num muted">{amount(l.previousCents)}</td>
                 <td className="num">
-                  <Amount cents={l.deltaCents} signed /> <span className="muted">{change(l.cents, l.previousCents)}</span>
+                  {signedAmount(l.deltaCents)} <span className="muted">{change(l.cents, l.previousCents)}</span>
                 </td>
               </tr>
             ))}
