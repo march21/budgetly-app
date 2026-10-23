@@ -100,7 +100,7 @@ class LoansFlowTest(
         }.andExpect { status { isCreated() } }
         val later = get("/api/portfolio")
         assertEquals(debt, later["debtCents"].asLong())
-        assertTrue(later["monthly"].all { it["debtCents"].asLong() <= debt })
+        assertEquals(worth["monthly"].map { it["debtCents"].asLong() }, later["monthly"].map { it["debtCents"].asLong() })
         mvc.delete("/api/loans/${get("/api/loans").single { it["name"].asText() == "Futur" }["id"].asLong()}").andExpect { status { isNoContent() } }
         for (invalid in listOf(
             mapOf("name" to "X", "principalCents" to 100, "annualRate" to "1", "firstPaymentDate" to "1900-01-01", "termMonths" to 12),
