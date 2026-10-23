@@ -70,7 +70,9 @@ jobs:
             exe: ""
             libs: "*.dylib"
             python: python3
-            graalvm: graalvm-community
+            # GraalVM Community ne prend pas en charge AWT sur macOS (PDFBox en dépend) : Liberica NIK complet.
+            graalvm: liberica
+            java_package: jdk+fx
     defaults:
       run:
         shell: bash
@@ -88,6 +90,7 @@ jobs:
         with:
           java-version: 21
           distribution: ${{ matrix.graalvm }}
+          java-package: ${{ matrix.java_package || 'jdk' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       # Métadonnées versionnées (union Linux + Windows) ; ce que les tests tracent en plus sur cette plateforme
