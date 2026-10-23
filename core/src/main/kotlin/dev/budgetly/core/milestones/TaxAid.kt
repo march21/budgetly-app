@@ -27,6 +27,8 @@ data class TaxRules(
     val homeServicesCeilingCents: Long,
     val childcareRatePercent: Int,
     val childcareCeilingPerChildCents: Long,
+    /** Première année de revenus à laquelle ces règles s'appliquent ; avant, aucun avantage n'est estimé. */
+    val fromYear: Int,
 )
 
 /** Aide à la déclaration des revenus d'une année, d'après les opérations catégorisées. */
@@ -62,8 +64,13 @@ class TaxAidService(private val jdbc: JdbcClient, private val clock: Clock) {
             val matching = rows.filter { it.code in codes && (accountTypes == null || it.accountType in accountTypes) }
             return TaxItem(code, matching.sumOf { it.cents * sign }.coerceAtLeast(0), matching.size)
         }
+        // Intérêts imposables : comptes courants et livrets ordinaires. Les intérêts crédités dans un PEA, une
+        // assurance vie ou un PEE ne se déclarent pas l'année où ils sont crédités : ils sont ignorés.
         val regulated = setOf("LIVRET_A", "LDDS")
+        val taxable = setOf("CHECKING", "SAVINGS")
         val interest = rows.filter { it.code == "interest" }
+        val estimated = year >= FiscalRules.TAX_AID_FROM_YEAR
+        fun benefit(cents: Long, rate: Int): Long? = if (estimated) percent(cents, rate) else null
         val donations = item("donations", setOf("donations"))
         val help = item("donations-help", setOf("donations-help"))
         val home = item("home-services", setOf("home-services"))
@@ -71,17 +78,17 @@ class TaxAidService(private val jdbc: JdbcClient, private val clock: Clock) {
         return TaxAidReport(
             year = year,
             regulatedInterest = TaxItem("regulated-interest", interest.filter { it.accountType in regulated }.sumOf { it.cents }.coerceAtLeast(0), interest.count { it.accountType in regulated }),
-            taxableInterest = TaxItem("taxable-interest", interest.filter { it.accountType !in regulated }.sumOf { it.cents }.coerceAtLeast(0), interest.count { it.accountType !in regulated }),
-            donations = donations.copy(estimatedBenefitCents = percent(donations.cents + (help.cents - minOf(help.cents, FiscalRules.DONATION_HELP_CEILING_CENTS)), FiscalRules.DONATION_RATE_PERCENT)),
-            donationsHelp = help.copy(estimatedBenefitCents = percent(minOf(help.cents, FiscalRules.DONATION_HELP_CEILING_CENTS), FiscalRules.DONATION_HELP_RATE_PERCENT)),
-            homeServices = home.copy(estimatedBenefitCents = percent(minOf(home.cents, FiscalRules.HOME_SERVICES_CEILING_CENTS), FiscalRules.HOME_SERVICES_RATE_PERCENT)),
+            taxableInterest = TaxItem("taxable-interest", interest.filter { it.accountType in taxable }.sumOf { it.cents }.coerceAtLeast(0), interest.count { it.accountType in taxable }),
+            donations = donations.copy(estimatedBenefitCents = benefit(donations.cents + (help.cents - minOf(help.cents, FiscalRules.DONATION_HELP_CEILING_CENTS)), FiscalRules.DONATION_RATE_PERCENT)),
+            donationsHelp = help.copy(estimatedBenefitCents = benefit(minOf(help.cents, FiscalRules.DONATION_HELP_CEILING_CENTS), FiscalRules.DONATION_HELP_RATE_PERCENT)),
+            homeServices = home.copy(estimatedBenefitCents = benefit(minOf(home.cents, FiscalRules.HOME_SERVICES_CEILING_CENTS), FiscalRules.HOME_SERVICES_RATE_PERCENT)),
             childcare = childcare.copy(estimatedBenefitCents = null),
             retirementSavings = item("retirement", setOf("retirement")),
             taxesPaid = item("taxes", setOf("taxes")),
             rules = TaxRules(
                 FiscalRules.VERIFIED_ON, FiscalRules.DONATION_RATE_PERCENT, FiscalRules.DONATION_HELP_RATE_PERCENT, FiscalRules.DONATION_HELP_CEILING_CENTS,
                 FiscalRules.HOME_SERVICES_RATE_PERCENT, FiscalRules.HOME_SERVICES_CEILING_CENTS, FiscalRules.CHILDCARE_RATE_PERCENT,
-                FiscalRules.CHILDCARE_CEILING_PER_CHILD_CENTS,
+                FiscalRules.CHILDCARE_CEILING_PER_CHILD_CENTS, FiscalRules.TAX_AID_FROM_YEAR,
             ),
         )
     }
@@ -107,7 +114,7 @@ class TaxAidService(private val jdbc: JdbcClient, private val clock: Clock) {
             from txn_split s join txn t on t.id = s.txn_id join account a on a.id = t.account_id
             join category c on c.id = s.category_id
             left join category p on p.id = c.parent_id
-            where t.operation_date between ? and ?
+            where t.operation_date between ? and ? and t.internal_transfer = 0
             """.trimIndent(),
         ).params(from, to, from, to).query { rs, _ ->
             val own = rs.getString(2)

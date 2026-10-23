@@ -193,6 +193,7 @@ export type TaxAidReport = {
     homeServicesCeilingCents: number;
     childcareRatePercent: number;
     childcareCeilingPerChildCents: number;
+    fromYear: number;
   };
 };
 

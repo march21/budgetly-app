@@ -30,12 +30,12 @@ function lines(r: TaxAidReport): Line[] {
     {
       item: r.retirementSavings,
       title: "Versements sur un PER",
-      text: "Déductibles du revenu dans la limite du plafond indiqué sur votre dernier avis d'imposition.",
+      text: "Déductibles du revenu dans la limite du plafond indiqué sur votre dernier avis d'imposition. Un versement vers un PER importé dans Budgetly est un virement interne et n'apparaît pas ici : reprenez l'attestation de l'assureur.",
     },
     {
       item: r.taxableInterest,
       title: "Intérêts imposables",
-      text: "Comptes et livrets non réglementés : en général déjà soumis au prélèvement à la source par la banque ; reportez le montant de l'imprimé fiscal unique (IFU).",
+      text: "Comptes courants et livrets ordinaires (un LEP ou un Livret Jeune est exonéré : à retirer). En général déjà soumis au prélèvement à la source par la banque ; reportez le montant de l'imprimé fiscal unique (IFU).",
     },
     {
       item: r.regulatedInterest,
@@ -57,7 +57,18 @@ export function TaxAidPanel({ year }: { year: number }) {
   const shown = lines(report);
   return (
     <section className="settings-section tax-aid" aria-labelledby="tax-aid-title">
-      <h2 id="tax-aid-title">Aide à la déclaration des revenus {year}</h2>
+      <h2 id="tax-aid-title">
+        Aide à la déclaration : revenus {year}, à déclarer en {year + 1}
+      </h2>
+      {year === new Date().getFullYear() && (
+        <p className="muted">Année en cours : totaux provisoires, à revoir une fois l'année terminée.</p>
+      )}
+      {year < report.rules.fromYear && (
+        <p className="muted">
+          Les règles enregistrées valent pour les revenus {report.rules.fromYear} et suivants : pour {year}, seuls les
+          totaux sont donnés, sans avantage estimé.
+        </p>
+      )}
       {shown.length === 0 ? (
         <p className="muted">
           Rien à signaler pour {year}. Classez vos dons, emploi à domicile, frais de garde et versements PER dans leurs
@@ -90,9 +101,9 @@ export function TaxAidPanel({ year }: { year: number }) {
         </div>
       )}
       <p className="muted">
-        D'après les opérations catégorisées, au taux légal, sans les plafonds propres à votre foyer. Règles vérifiées le{" "}
-        {longDate(report.rules.verifiedOn)} (service-public.fr et loi de finances 2026). Les attestations et l'imprimé
-        fiscal unique de vos établissements font foi ; ceci n'est pas un conseil fiscal.
+        D'après les opérations catégorisées, au taux légal, sans les plafonds propres à votre foyer. Règles relevées le{" "}
+        {longDate(report.rules.verifiedOn)} dans des sources secondaires, à confirmer sur impots.gouv.fr. Les
+        attestations et l'imprimé fiscal unique de vos établissements font foi ; ceci n'est pas un conseil fiscal.
       </p>
     </section>
   );

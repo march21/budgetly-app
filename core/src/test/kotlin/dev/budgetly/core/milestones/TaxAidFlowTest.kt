@@ -68,6 +68,11 @@ class TaxAidFlowTest(
         assertEquals(0, report["homeServices"]["cents"].asLong())
         assertEquals(200_000, report["rules"]["donationHelpCeilingCents"].asLong())
         assertTrue(report["childcare"]["estimatedBenefitCents"].isNull)
+        assertEquals(2026, report["rules"]["fromYear"].asInt())
+        // Avant l'année couverte par les règles vérifiées : totaux seulement, aucun avantage estimé.
+        val before = json.readTree(mvc.get("/api/summary/tax?year=2025").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertTrue(before["donationsHelp"]["estimatedBenefitCents"].isNull)
+        assertTrue(before["homeServices"]["estimatedBenefitCents"].isNull)
         mvc.get("/api/summary/tax?year=1999").andExpect { status { isBadRequest() } }
     }
 }

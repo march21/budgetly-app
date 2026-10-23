@@ -10,6 +10,12 @@ object FiscalRules {
     /** Vérifiées le 23/10/2026 (service-public.fr F2385, F2329, F2365, F2368 ; assurance vie : Linxea). */
     val VERIFIED_ON: LocalDate = LocalDate.of(2026, 10, 23)
 
+    /**
+     * Première année de revenus couverte par les règles de l'aide à la déclaration (plafond de 2 000 € des dons aux
+     * personnes en difficulté sur toute l'année). Pour les années antérieures, seuls les totaux sont donnés.
+     */
+    const val TAX_AID_FROM_YEAR = 2026
+
     /** PEA : retraits partiels sans clôture et gains exonérés d'impôt sur le revenu après 5 ans. */
     const val PEA_YEARS = 5L
     const val PEA_CEILING_CENTS = 15_000_000L
