@@ -1629,3 +1629,55 @@ select {
 .allocation td.num {
   white-space: nowrap;
 }
+
+/* Échéances et plafonds */
+.milestones {
+  display: grid;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.milestones ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.milestone {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.milestone p {
+  margin: 2px 0 4px;
+}
+
+.milestone-status {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--muted);
+}
+
+.milestone--soon .milestone-status {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.milestone--reached .milestone-status {
+  color: var(--credit);
+  border-color: var(--credit);
+}
+
+.milestone--needs_opening_date .milestone-status {
+  color: var(--accent);
+  border-color: var(--accent);
+}

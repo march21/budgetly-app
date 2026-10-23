@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, type AssetClass, type Availability, type Envelope, type NetWorth, type PriceReport } from "./api";
 import { Amount } from "./Amount";
+import { MilestonesPanel } from "./Milestones";
 import { amount, longDate, noIsinLabel, parseEuros, percent, shortDate } from "./format";
 
 const statusLabel: Record<string, string> = {
@@ -93,6 +94,7 @@ export function PortfolioPage({ onChanged, onImport }: { onChanged: () => void; 
 
       {worth.monthly.length >= 2 && <MonthlyChart months={worth.monthly} />}
       {worth.allocation.some((a) => a.valueCents > 0) && <AllocationPanel slices={worth.allocation} />}
+      <MilestonesPanel refreshKey={worth.totalCents} />
 
       <section className="prices">
         <div className="prices-header">
