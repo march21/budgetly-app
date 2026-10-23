@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, type AssetClass, type Availability, type Envelope, type NetWorth, type PriceReport } from "./api";
 import { Amount } from "./Amount";
 import { MilestonesPanel } from "./Milestones";
+import { LoansPanel } from "./Loans";
 import { amount, longDate, noIsinLabel, parseEuros, percent, shortDate } from "./format";
 
 const statusLabel: Record<string, string> = {
@@ -57,7 +58,7 @@ export function PortfolioPage({ onChanged, onImport }: { onChanged: () => void; 
 
   if (!worth) return null;
 
-  if (worth.envelopes.length === 0 && worth.cashAccounts.length === 0) {
+  if (worth.envelopes.length === 0 && worth.cashAccounts.length === 0 && worth.debtCents === 0) {
     return (
       <section className="empty">
         <h1>Votre patrimoine apparaîtra ici</h1>
@@ -67,6 +68,7 @@ export function PortfolioPage({ onChanged, onImport }: { onChanged: () => void; 
         <button className="primary" onClick={onImport}>
           Importer un relevé
         </button>
+        <LoansPanel onChanged={load} />
       </section>
     );
   }
@@ -77,10 +79,10 @@ export function PortfolioPage({ onChanged, onImport }: { onChanged: () => void; 
         <h1>Patrimoine</h1>
       </header>
 
-      <dl className="figures figures--three">
+      <dl className={`figures ${worth.debtCents > 0 ? "" : "figures--three"}`}>
         <div className="figure">
-          <dt>Patrimoine total</dt>
-          <dd className="figure-value">{amount(worth.totalCents)}</dd>
+          <dt>{worth.debtCents > 0 ? "Patrimoine net" : "Patrimoine total"}</dt>
+          <dd className="figure-value">{amount(worth.netCents)}</dd>
         </div>
         <div className="figure">
           <dt>Comptes et livrets</dt>
@@ -90,11 +92,18 @@ export function PortfolioPage({ onChanged, onImport }: { onChanged: () => void; 
           <dt>Investissements</dt>
           <dd className="figure-value">{amount(worth.investedCents)}</dd>
         </div>
+        {worth.debtCents > 0 && (
+          <div className="figure">
+            <dt>Crédits (restant dû)</dt>
+            <dd className="figure-value">−{amount(worth.debtCents)}</dd>
+          </div>
+        )}
       </dl>
 
       {worth.monthly.length >= 2 && <MonthlyChart months={worth.monthly} />}
       {worth.allocation.some((a) => a.valueCents > 0) && <AllocationPanel slices={worth.allocation} />}
       <MilestonesPanel refreshKey={worth.totalCents} />
+      <LoansPanel onChanged={load} />
 
       <section className="prices">
         <div className="prices-header">
@@ -380,7 +389,8 @@ function MonthlyChart({ months }: { months: NetWorth["monthly"] }) {
       </div>
       <p className="worth-readout" aria-live="polite">
         {active >= months.length - 1 ? "Aujourd'hui" : `Fin ${monthName.format(new Date(`${current.month}-15T12:00:00`))}`}{" "}
-        · <strong>{amount(current.totalCents)}</strong> · comptes {amount(current.liquidCents)} · investissements {amount(current.investedCents)}
+        · <strong>{amount(current.netCents)}</strong>{current.debtCents > 0 && " net"} · comptes {amount(current.liquidCents)} · investissements {amount(current.investedCents)}
+        {current.debtCents > 0 && ` · crédits −${amount(current.debtCents)}`}
         {current.estimated && " (estimé d'après les derniers cours)"}
       </p>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Patrimoine en fin de mois, comptes et investissements" onMouseLeave={() => setActive(months.length - 1)}>

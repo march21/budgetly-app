@@ -55,8 +55,17 @@ data class CashAccountView(val accountId: Long, val type: AccountType, val name:
 data class NetWorthPoint(val date: LocalDate, val totalCents: Long, val estimated: Boolean)
 
 /** Patrimoine à la fin d'un mois (ou aujourd'hui pour le mois en cours), comptes et investissements séparés. */
-data class MonthlyNetWorth(val month: String, val date: LocalDate, val liquidCents: Long, val investedCents: Long, val estimated: Boolean) {
+data class MonthlyNetWorth(
+    val month: String,
+    val date: LocalDate,
+    val liquidCents: Long,
+    val investedCents: Long,
+    val estimated: Boolean,
+    /** Capital restant dû des crédits saisis à cette date. */
+    val debtCents: Long = 0,
+) {
     val totalCents: Long get() = liquidCents + investedCents
+    val netCents: Long get() = totalCents - debtCents
 }
 
 /** Classes d'actifs, du plus disponible au plus risqué. */
@@ -73,7 +82,11 @@ data class NetWorth(
     val history: List<NetWorthPoint>,
     val monthly: List<MonthlyNetWorth> = emptyList(),
     val allocation: List<AllocationSlice> = emptyList(),
-)
+    /** Capital restant dû des crédits saisis aujourd'hui ; [totalCents] reste le total des avoirs. */
+    val debtCents: Long = 0,
+) {
+    val netCents: Long get() = totalCents - debtCents
+}
 
 data class ManualValuation(val date: LocalDate, val valueCents: Long)
 
@@ -83,7 +96,7 @@ data class ManualValuation(val date: LocalDate, val valueCents: Long)
  * les parts du dernier relevé × le dernier cours connu (« estimée »), sinon la valeur du relevé.
  */
 @Service
-class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
+class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock, private val loans: dev.budgetly.core.loans.LoanService) {
 
     private data class Envelope(val id: Long, val type: AccountType, val name: String, val institution: String, val number: String)
 
@@ -103,6 +116,7 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
             history = history(envelopes),
             monthly = monthly(envelopes),
             allocation = allocation(cash, envelopes),
+            debtCents = loans.outstandingAt(LocalDate.now(clock)),
         )
     }
 
@@ -174,7 +188,7 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
         for (e in envelopes.filter { it.valueSource == ValueSource.ESTIMATED }) {
             series[e.accountId] = (series[e.accountId].orEmpty() + Triple(e.valueDate, e.valueCents, true)).sortedBy { it.first }
         }
-        val first = series.values.flatten().minOfOrNull { it.first } ?: return emptyList()
+        val first = listOfNotNull(series.values.flatten().minOfOrNull { it.first }, loans.earliestStart()).minOrNull() ?: return emptyList()
         var month = java.time.YearMonth.from(first)
         val last = java.time.YearMonth.from(today)
         val points = mutableListOf<MonthlyNetWorth>()
@@ -188,7 +202,7 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
                 if (types[id]?.let { it in INVESTMENT_TYPES } == true) invested += point.second else liquid += point.second
                 estimated = estimated || point.third
             }
-            points += MonthlyNetWorth(month.toString(), date, liquid, invested, estimated)
+            points += MonthlyNetWorth(month.toString(), date, liquid, invested, estimated, loans.outstandingAt(date))
             month = month.plusMonths(1)
         }
         return points.takeLast(120)

@@ -26,7 +26,7 @@ class ApiTest(@Autowired private val mvc: MockMvc, @Autowired private val vault:
             status { isOk() }
             jsonPath("$.status") { value("UP") }
             jsonPath("$.vault") { value("UNLOCKED") }
-            jsonPath("$.schemaVersion") { value("10") }
+            jsonPath("$.schemaVersion") { value("11") }
         }
     }
 
