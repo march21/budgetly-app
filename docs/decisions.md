@@ -72,6 +72,15 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - **PEE Natixis** (avis d'opération d'épargne salariale, envoyé à chaque versement) : seule la page « Situation de vos avoirs » est lue (placements par date de disponibilité, valeur de part, parts, montant, total). Contrôle : somme des lignes = total = somme par date de disponibilité. Les FCPE n'ont pas d'ISIN sur l'avis : identifiés par leur nom, valeur au relevé (ou saisie manuelle), pas de cours automatique. Pas de cumul des versements sur ce document. Identifiant de l'enveloppe : numéro d'entreprise (un PEE par employeur). Répartition disponible / bloqué conservée à chaque relevé.
 - `account.iban` sert d'identifiant de compte : IBAN, ou numéro de contrat pour une enveloppe.
 
+## 4 quinquies. Repères fiscaux
+Règles françaises, codées dans `milestones/FiscalRules.kt`, **vérifiées le 23/10/2026** ; à revoir à chaque loi de finances (et loi de financement de la Sécurité sociale).
+- **PEA** : plafond des versements 150 000 € ; avant 5 ans, un retrait clôture le plan (sauf exceptions) ; après 5 ans, retraits partiels sans clôture et gains exonérés d'impôt sur le revenu. Source : [service-public.fr F2385](https://www.service-public.gouv.fr/particuliers/vosdroits/F2385) (mise à jour du 22/05/2026).
+- **Prélèvements sociaux** 2026 : 18,6 % en général (CSG 10,6 %) ; 17,2 % pour l'assurance vie, les PEL et CEL ; livrets réglementés exonérés. Source : [service-public.fr F2329](https://www.service-public.gouv.fr/particuliers/vosdroits/F2329) (vérifiée le 30/06/2026).
+- **Assurance vie** après 8 ans : abattement annuel de 4 600 € sur les gains retirés (9 200 € pour un couple), puis 7,5 % (12,8 % sur la part des versements au-delà de 150 000 €, versements depuis le 27/09/2017). Source : [Linxea, fiscalité après 8 ans](https://www.linxea.com/lexique/assurance-vie/assurance-vie-fiscalite-apres-8-ans/).
+- **Livrets** : plafonds des versements Livret A 22 950 €, LDDS 12 000 € ; les intérêts capitalisés peuvent les dépasser. Source : [Caisse d'Épargne, plafond LDDS](https://www.caisse-epargne.fr/epargner/livret-de-developpement-durable-et-solidaire/plafond/).
+- **Date d'ouverture** d'une enveloppe (premier versement) : absente des relevés lus, saisie par l'utilisateur (migration V9). Sans elle, l'échéance est signalée « à compléter ».
+- Repère « bientôt » : échéance à moins de 6 mois, plafond à 90 %. Repères indicatifs, jamais présentés comme un conseil fiscal. Le récapitulatif annuel pour la déclaration (intérêts, dividendes, retraits) reste à faire (#5).
+
 ## 4 quater. Sauvegardes, mot de passe, annulation
 - **Sauvegarde** = archive `.budgetly` contenant la base **telle qu'elle est sur disque (chiffrée)**, `vault.json` (sel et paramètres Argon2id) et un en-tête sans donnée personnelle. Copie faite en tenant l'unique connexion du pool : personne n'écrit pendant la copie. Restaurer demande le mot de passe en vigueur à la création de la sauvegarde.
 - Sauvegarde **automatique** à l'ouverture du coffre si la dernière date de plus de 20 h ; les 7 dernières sont gardées. Sauvegarde **de sécurité** avant tout changement de mot de passe. Sauvegardes manuelles jamais supprimées automatiquement. Dossier : `<données>/sauvegardes`.
@@ -130,6 +139,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
+- 23/10/2026 — Version 0.7.0. Repères fiscaux (#5, premier volet) : 5 ans du PEA et 8 ans de l'assurance vie d'après la date d'ouverture saisie, plafonds PEA, Livret A et LDDS, prochain déblocage du PEE. Migration V9 (`account.opened_on`).
 - 23/10/2026 — Version 0.6.0. Patrimoine : fins de mois, rendement des enveloppes (TRI, versements déduits) et répartition par classe d'actifs (#4).
 - 23/10/2026 — Version 0.5.0. Import des exports CSV et OFX (#3) : correspondance des colonnes, soldes de contrôle obligatoires, doublons par date et montant face aux relevés PDF.
 - 22/10/2026 — Feuille de route publiée en issues (#3 à #9).

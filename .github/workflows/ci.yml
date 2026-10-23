@@ -149,7 +149,7 @@ jobs:
           [ "$code" = "423" ] || { echo "::error::Données accessibles coffre verrouillé ($code)"; exit 1; }
           curl -sf -b cookies.txt -H 'Content-Type: application/json' -d '{"password":"mot-de-passe-ci-123"}' http://127.0.0.1:47811/api/vault/setup
           curl -sf -b cookies.txt http://127.0.0.1:47811/api/health | tee health.json
-          grep -q '"schemaVersion":"8"' health.json || { echo '::error::Migrations non appliquées après déverrouillage'; tail -40 core.log; exit 1; }
+          grep -q '"schemaVersion":"9"' health.json || { echo '::error::Migrations non appliquées après déverrouillage'; tail -40 core.log; exit 1; }
           curl -sf -b cookies.txt http://127.0.0.1:47811/api/accounts | grep -q '^\[\]$' || { echo '::error::Liste des comptes KO'; exit 1; }
           # Source de cours en natif (HTTPS, JSON) avec un ISIN public (TotalEnergies), sans rapport avec un portefeuille.
           status=$(curl -s -m 60 -o diag.json -w '%{http_code}' -b cookies.txt "http://127.0.0.1:47811/api/dev/price-check?isin=FR0000120271" || echo "curl-$?")

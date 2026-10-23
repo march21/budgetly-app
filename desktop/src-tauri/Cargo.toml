@@ -1,6 +1,6 @@
 [package]
 name = "budgetly-desktop"
-version = "0.6.0"
+version = "0.7.0"
 description = "Coque desktop de Budgetly : lance le cœur en local et affiche l'interface"
 edition = "2021"
 publish = false

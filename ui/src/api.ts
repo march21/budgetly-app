@@ -252,6 +252,32 @@ export type NetWorth = {
   allocation: { assetClass: AssetClass; valueCents: number }[];
 };
 
+export type Milestone = {
+  accountId: number;
+  accountName: string;
+  accountType: AccountType;
+  kind: "PEA_MATURITY" | "LIFE_INSURANCE_MATURITY" | "PEE_RELEASE" | "PEA_CEILING" | "SAVINGS_CEILING";
+  status: "NEEDS_OPENING_DATE" | "UPCOMING" | "SOON" | "REACHED";
+  date: string | null;
+  openedOn: string | null;
+  amountCents: number | null;
+  limitCents: number | null;
+};
+
+export type MilestoneReport = {
+  milestones: Milestone[];
+  rules: {
+    verifiedOn: string;
+    peaCeilingCents: number;
+    livretACeilingCents: number;
+    lddsCeilingCents: number;
+    lifeInsuranceAllowanceSingleCents: number;
+    lifeInsuranceAllowanceCoupleCents: number;
+    socialLeviesGeneral: number;
+    socialLeviesLifeInsurance: number;
+  };
+};
+
 export type AssetClass = "CURRENT_ACCOUNTS" | "SAVINGS_ACCOUNTS" | "ENVELOPE_CASH" | "MONEY_MARKET" | "EURO_FUNDS" | "EQUITY_AND_FUNDS" | "UNALLOCATED";
 
 export type EnvelopePerformance = {
@@ -420,6 +446,9 @@ export const api = {
   csvUrl: "/api/transactions/export.csv",
 
   accounts: () => request<Account[]>("/api/accounts"),
+  milestones: () => request<MilestoneReport>("/api/milestones"),
+  setOpenedOn: (accountId: number, date: string | null) =>
+    request<void>(`/api/accounts/${accountId}/opened-on`, { ...json({ date }), method: "PUT" }),
   transactions: (filter: {
     accountId?: number;
     from?: string;

@@ -71,7 +71,7 @@ class VaultTest(
             contentType = MediaType.APPLICATION_JSON
             content = password(TestSupport.PASSWORD)
         }.andExpect { status { isNoContent() } }
-        mvc.get("/api/health").andExpect { jsonPath("$.schemaVersion") { value("8") } }
+        mvc.get("/api/health").andExpect { jsonPath("$.schemaVersion") { value("9") } }
 
         val vaultJson = Files.readString(props.dataDir.resolve("vault.json"))
         assertFalse(vaultJson.contains(TestSupport.PASSWORD), "le mot de passe ne doit pas être stocké")
