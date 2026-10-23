@@ -27,6 +27,20 @@ object FiscalRules {
     const val SOCIAL_LEVIES_GENERAL = 0.186
     const val SOCIAL_LEVIES_LIFE_INSURANCE = 0.172
 
+    /**
+     * Aide à la déclaration. Dons : 66 % ; 75 % pour les organismes d'aide aux personnes en difficulté (repas,
+     * soins, logement, victimes de violences), dans la limite de 2 000 € de dons depuis le 14/10/2025 (loi de
+     * finances 2026, 1 000 € avant). Emploi à domicile : crédit de 50 % de 12 000 € de dépenses au plus (hors
+     * majorations). Garde d'enfants de moins de 6 ans hors du domicile : 50 % de 3 500 € par enfant au plus.
+     */
+    const val DONATION_RATE_PERCENT = 66
+    const val DONATION_HELP_RATE_PERCENT = 75
+    const val DONATION_HELP_CEILING_CENTS = 200_000L
+    const val HOME_SERVICES_RATE_PERCENT = 50
+    const val HOME_SERVICES_CEILING_CENTS = 1_200_000L
+    const val CHILDCARE_RATE_PERCENT = 50
+    const val CHILDCARE_CEILING_PER_CHILD_CENTS = 350_000L
+
     /** Un repère « bientôt » : échéance à moins de 6 mois, plafond à 90 % ou plus. */
     const val SOON_MONTHS = 6L
     const val NEAR_CEILING_PER_MILLE = 900L

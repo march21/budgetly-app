@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type AnnualLine, type AnnualReview } from "./api";
 import { Amount } from "./Amount";
 import { amount, percent, signedAmount } from "./format";
+import { TaxAidPanel } from "./TaxAid";
 
 const monthShort = new Intl.DateTimeFormat("fr-FR", { month: "short" });
 const monthLong = new Intl.DateTimeFormat("fr-FR", { month: "long" });
@@ -82,6 +83,7 @@ export function AnnualPage() {
           <MonthsTable review={review} />
           <LinesTable title="Dépenses par catégorie" lines={review.expenses} year={year} />
           {review.income.length > 0 && <LinesTable title="Revenus par catégorie" lines={review.income} year={year} />}
+          <TaxAidPanel year={year} />
         </>
       )}
     </section>
