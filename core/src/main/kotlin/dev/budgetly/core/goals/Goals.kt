@@ -14,6 +14,7 @@ import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.temporal.ChronoUnit
+import java.util.Optional
 
 /** Saisie d'un objectif. Suivi par le solde d'un compte ([accountId]) ou par un montant saisi ([savedCents]). */
 data class GoalRequest(
@@ -86,14 +87,16 @@ class GoalService(private val jdbc: JdbcClient, private val portfolio: Portfolio
                 monthlyCents = r.monthlyCents,
                 reached = remaining == 0L,
                 monthsLeft = monthsLeft,
-                requiredMonthlyCents = monthsLeft?.takeIf { remaining > 0 }?.let { m -> if (m == 0) remaining else ceilDiv(remaining, m.toLong()) },
-                projectedMonth = r.monthlyCents?.takeIf { it > 0 && remaining > 0 }?.let { YearMonth.from(today).plusMonths(ceilDiv(remaining, it)) },
+                requiredMonthlyCents = monthsLeft?.takeIf { remaining > 0 }?.let { m -> if (m == 0) remaining else Math.ceilDiv(remaining, m.toLong()) },
+                // Au-delà d'un siècle, l'estimation n'a pas de sens : pas de mois affiché.
+                projectedMonth = r.monthlyCents?.takeIf { it > 0 && remaining > 0 }?.let { Math.ceilDiv(remaining, it) }
+                    ?.takeIf { it <= MAX_PROJECTION_MONTHS }?.let { YearMonth.from(today).plusMonths(it) },
             )
         }
     }
 
     fun create(request: GoalRequest): Long {
-        validate(request)
+        validate(request, previousDate = null)
         val keys = GeneratedKeyHolder()
         jdbc.sql(
             "insert into savings_goal (name, target_cents, target_date, account_id, saved_cents, monthly_cents, created_at) values (?, ?, ?, ?, ?, ?, ?)",
@@ -102,7 +105,9 @@ class GoalService(private val jdbc: JdbcClient, private val portfolio: Portfolio
     }
 
     fun update(id: Long, request: GoalRequest) {
-        validate(request)
+        val previous = jdbc.sql("select target_date from savings_goal where id = ?").param(id).query { rs, _ -> Optional.ofNullable(rs.getString(1)) }
+            .optional().orElseThrow { ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Objectif introuvable.") }
+        validate(request, previousDate = previous.orElse(null)?.let(LocalDate::parse))
         val updated = jdbc.sql(
             "update savings_goal set name = ?, target_cents = ?, target_date = ?, account_id = ?, saved_cents = ?, monthly_cents = ? where id = ?",
         ).params(*values(request), id).update()
@@ -119,12 +124,14 @@ class GoalService(private val jdbc: JdbcClient, private val portfolio: Portfolio
         r.name.trim(), r.targetCents, r.targetDate?.toString(), r.accountId, if (r.accountId == null) r.savedCents ?: 0L else null, r.monthlyCents,
     )
 
-    private fun validate(r: GoalRequest) {
+    /** La date passée n'est refusée que si elle change : un objectif échu reste modifiable. */
+    private fun validate(r: GoalRequest, previousDate: LocalDate?) {
         fun invalid(message: String): Nothing = throw ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", message)
         if (r.name.isBlank() || r.name.trim().length > 80) invalid("Donnez un nom à l'objectif (80 caractères au plus).")
         if (r.targetCents <= 0) invalid("Le montant visé doit être positif.")
         if ((r.savedCents ?: 0) < 0 || (r.monthlyCents ?: 0) < 0) invalid("Les montants ne peuvent pas être négatifs.")
-        if (r.targetDate != null && r.targetDate.isBefore(LocalDate.now(clock))) invalid("La date visée est déjà passée.")
+        if (listOfNotNull(r.targetCents, r.savedCents, r.monthlyCents).any { it > MAX_CENTS }) invalid("Montant trop élevé (1 milliard d'euros au plus).")
+        if (r.targetDate != null && r.targetDate != previousDate && r.targetDate.isBefore(LocalDate.now(clock))) invalid("La date visée est déjà passée.")
         if (r.accountId != null) {
             val exists = jdbc.sql("select count(*) from account where id = ?").param(r.accountId).query(Long::class.java).single() > 0
             if (!exists) invalid("Compte introuvable.")
@@ -140,5 +147,8 @@ class GoalService(private val jdbc: JdbcClient, private val portfolio: Portfolio
                 )
             }.list()
 
-    private fun ceilDiv(a: Long, b: Long) = Math.floorDiv(a + b - 1, b)
+    companion object {
+        const val MAX_CENTS = 100_000_000_000L
+        const val MAX_PROJECTION_MONTHS = 1_200L
+    }
 }

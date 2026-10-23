@@ -75,6 +75,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 ## 4 sexies. Objectifs d'épargne
 - Un objectif = un montant visé, une date facultative, et un suivi : **le solde d'un compte** (dernier relevé, ou valeur actuelle d'une enveloppe) ou **un montant saisi**. Effort mensuel prévu facultatif.
 - Calculs en centimes entiers : effort nécessaire = reste ÷ mois entiers restants (arrondi au centime supérieur) ; mois d'atteinte = mois courant + reste ÷ effort prévu (arrondi au mois supérieur). Aucun rendement supposé.
+- Montants bornés à 1 milliard d'euros (service et contraintes de la base) ; pas de mois d'atteinte au-delà d'un siècle ; une date visée passée n'est refusée que si elle change.
 - Un compte supprimé (annulation de son premier import) laisse l'objectif en place, sans compte.
 - Taux d'épargne moyen sur les mois renseignés de l'historique : (revenus − dépenses) / revenus, calculé sur les totaux (pas une moyenne de taux).
 
@@ -145,7 +146,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
-- 23/10/2026 — Version 0.8.0. Objectifs d'épargne (#6) : suivi par un compte ou à la main, effort mensuel nécessaire, date d'atteinte estimée ; taux d'épargne moyen sur 12 mois. Migration V10.
+- 23/10/2026 — Version 0.8.0. Objectifs d'épargne (#6) : suivi par un compte ou à la main, effort mensuel nécessaire, date d'atteinte estimée ; taux d'épargne moyen sur la période de l'historique. Migration V10.
 - 23/10/2026 — Version 0.7.0. Repères fiscaux (#5, premier volet) : 5 ans du PEA et 8 ans de l'assurance vie d'après la date d'ouverture saisie, plafonds PEA, Livret A et LDDS, prochain déblocage du PEE. Migration V9 (`account.opened_on`).
 - 23/10/2026 — Version 0.6.0. Patrimoine : fins de mois, rendement des enveloppes (TRI, versements déduits) et répartition par classe d'actifs (#4).
 - 23/10/2026 — Version 0.5.0. Import des exports CSV et OFX (#3) : correspondance des colonnes, soldes de contrôle obligatoires, doublons par date et montant face aux relevés PDF.

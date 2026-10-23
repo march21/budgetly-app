@@ -62,6 +62,8 @@ class GoalsFlowTest(
             mapOf("name" to "X", "targetCents" to 0),
             mapOf("name" to "X", "targetCents" to 100, "targetDate" to today.minusDays(1).toString()),
             mapOf("name" to "X", "targetCents" to 100, "accountId" to 9_999),
+            mapOf("name" to "X", "targetCents" to 100_000_000_001L),
+            mapOf("name" to "X", "targetCents" to 100, "monthlyCents" to -1),
         )) {
             mvc.post("/api/goals") { contentType = MediaType.APPLICATION_JSON; content = body(invalid) }.andExpect { status { isBadRequest() } }
         }
@@ -85,6 +87,12 @@ class GoalsFlowTest(
         }.andExpect { status { isNoContent() } }
         goals = get("/api/goals")
         assertEquals(YearMonth.from(today).plusMonths(3).toString(), goals[1]["projectedMonth"].asText())
+        // Effort dérisoire : pas de mois d'atteinte au-delà d'un siècle.
+        mvc.put("/api/goals/${goals[1]["id"].asLong()}") {
+            contentType = MediaType.APPLICATION_JSON
+            content = body(mapOf("name" to "Vélo", "targetCents" to 100_000_000_000L, "savedCents" to 0, "monthlyCents" to 1))
+        }.andExpect { status { isNoContent() } }
+        assertTrue(get("/api/goals")[1]["projectedMonth"].isNull)
         mvc.delete("/api/goals/${goals[1]["id"].asLong()}").andExpect { status { isNoContent() } }
         mvc.delete("/api/goals/${goals[1]["id"].asLong()}").andExpect { status { isNotFound() } }
 

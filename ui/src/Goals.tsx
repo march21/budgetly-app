@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, type Account, type Goal, type GoalRequest } from "./api";
-import { amount, longDate, percent } from "./format";
-import { parseSignedEuros } from "./TabularImport";
+import { amount, longDate, parseEuros, percent } from "./format";
 
 const monthYear = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
 const monthText = (ym: string) => monthYear.format(new Date(`${ym}-15T12:00:00`));
@@ -103,10 +102,12 @@ function GoalForm({ accounts, goal, onDone }: { accounts: Account[]; goal?: Goal
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const targetCents = parseSignedEuros(target);
-  const savedCents = saved.trim() === "" ? 0 : parseSignedEuros(saved);
-  const monthlyCents = monthly.trim() === "" ? null : parseSignedEuros(monthly);
-  const valid = name.trim().length > 0 && targetCents !== null && targetCents > 0 && savedCents !== null && (monthly.trim() === "" || monthlyCents !== null);
+  // parseEuros : montant positif en centimes, null si vide, NaN si illisible.
+  const ok = (v: number | null) => v === null || Number.isFinite(v);
+  const targetCents = parseEuros(target);
+  const savedCents = parseEuros(saved) ?? 0;
+  const monthlyCents = parseEuros(monthly);
+  const valid = name.trim().length > 0 && targetCents !== null && Number.isFinite(targetCents) && targetCents > 0 && ok(savedCents) && ok(monthlyCents);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
