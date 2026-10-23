@@ -191,7 +191,8 @@ class PortfolioImportService(
     @EventListener
     fun onLocked(event: VaultLockedEvent) = pending.clear()
 
-    private fun purgeExpired() {
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
+    fun purgeExpired() {
         val limit = clock.instant().minus(Duration.ofMinutes(30))
         pending.entries.removeIf { it.value.createdAt.isBefore(limit) }
     }

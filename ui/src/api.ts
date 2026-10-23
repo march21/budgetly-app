@@ -295,6 +295,50 @@ export type ImportRecord = {
   cancellable: boolean;
 };
 
+export type CsvMapping = {
+  headerRow: number | null;
+  firstDataRow: number;
+  dateColumn: number;
+  operationDateColumn: number | null;
+  labelColumn: number;
+  detailColumns: number[];
+  amountColumn: number | null;
+  debitColumn: number | null;
+  creditColumn: number | null;
+  balanceColumn: number | null;
+  dateFormat: string;
+  decimalComma: boolean;
+};
+
+export type TabularAnalysis = {
+  token: string | null;
+  alreadyImported: boolean;
+  format: "CSV" | "OFX";
+  encoding: string;
+  delimiter: string | null;
+  rows: string[][];
+  rowCount: number;
+  columnCount: number;
+  suggestedMapping: CsvMapping | null;
+  mappingRemembered: boolean;
+  ofx: {
+    accountMasked: string | null;
+    transactionCount: number;
+    firstDate: string | null;
+    lastDate: string | null;
+    closingCents: number | null;
+    closingDate: string | null;
+  } | null;
+  suggestedAccountId: number | null;
+};
+
+export type TabularPreviewRequest = {
+  mapping?: CsvMapping;
+  account: { existingAccountId?: number; name?: string; type?: AccountType; institution?: string };
+  openingCents?: number;
+  closingCents?: number;
+};
+
 export type RuleSuggestion = { pattern: string; count: number; totalCents: number; sampleLabel: string; lastDate: string };
 
 export type AutoLockSetting = { minutes: number; allowed: number[] };
@@ -383,6 +427,13 @@ export const api = {
     form.append("file", file);
     return request<ImportPreview>("/api/imports/preview", { method: "POST", body: form });
   },
+  analyzeTabular: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<TabularAnalysis>("/api/imports/tabular/analyze", { method: "POST", body: form });
+  },
+  previewTabular: (token: string, body: TabularPreviewRequest) =>
+    request<ImportPreview>(`/api/imports/tabular/${token}/preview`, json(body)),
   commit: (previewId: string) => request<ImportRecord>(`/api/imports/${previewId}/commit`, { method: "POST" }),
   imports: () => request<ImportRecord[]>("/api/imports"),
   cancelImport: (id: number) => request<void>(`/api/imports/${id}`, { method: "DELETE" }),

@@ -11,6 +11,9 @@ spring:
   servlet:
     multipart:
       max-file-size: 512MB
+      # Relevés et exports restent en mémoire (jamais dans le dossier temporaire de Tomcat) ; seules les
+      # sauvegardes, chiffrées, peuvent dépasser ce seuil.
+      file-size-threshold: 64MB
       max-request-size: 520MB
 
 budgetly:

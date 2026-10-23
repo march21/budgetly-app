@@ -16,8 +16,9 @@ Décisions de conception : [`docs/decisions.md`](docs/decisions.md).
 | EasyBourse | Relevé de portefeuille PEA | Positions, liquidités, valorisation |
 | EasyVie | Relevé de contrat d'assurance vie | Supports, valorisation |
 | Natixis (épargne salariale) | Avis d'opération PEE | Positions et disponibilité par date |
+| Toute banque | Export CSV ou OFX des opérations | Opérations ; soldes lus dans le fichier ou saisis pour le contrôle |
 
-Votre banque n'y est pas ? C'est la contribution la plus utile : voir [Contribuer](#contribuer).
+Pour une banque sans connecteur, l'export CSV ou OFX suffit ; un connecteur PDF reste la contribution la plus utile (soldes et totaux contrôlés sans saisie) : voir [Contribuer](#contribuer).
 
 ## Installation
 
