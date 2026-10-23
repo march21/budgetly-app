@@ -46,11 +46,23 @@ data class EnvelopeView(
     val holdings: List<HoldingView>,
     /** Répartition du dernier relevé par date de disponibilité (épargne salariale), sinon vide. */
     val availability: List<dev.budgetly.core.imports.AvailabilityView> = emptyList(),
+    /** Rendement depuis le premier relevé qui donne le cumul des versements ; null si incalculable. */
+    val performance: EnvelopePerformance? = null,
 )
 
 data class CashAccountView(val accountId: Long, val type: AccountType, val name: String, val balanceCents: Long, val balanceDate: LocalDate)
 
 data class NetWorthPoint(val date: LocalDate, val totalCents: Long, val estimated: Boolean)
+
+/** Patrimoine à la fin d'un mois (ou aujourd'hui pour le mois en cours), comptes et investissements séparés. */
+data class MonthlyNetWorth(val month: String, val date: LocalDate, val liquidCents: Long, val investedCents: Long, val estimated: Boolean) {
+    val totalCents: Long get() = liquidCents + investedCents
+}
+
+/** Classes d'actifs, du plus disponible au plus risqué. */
+enum class AssetClass { CURRENT_ACCOUNTS, SAVINGS_ACCOUNTS, ENVELOPE_CASH, MONEY_MARKET, EURO_FUNDS, EQUITY_AND_FUNDS, UNALLOCATED }
+
+data class AllocationSlice(val assetClass: AssetClass, val valueCents: Long)
 
 data class NetWorth(
     val totalCents: Long,
@@ -59,6 +71,8 @@ data class NetWorth(
     val cashAccounts: List<CashAccountView>,
     val envelopes: List<EnvelopeView>,
     val history: List<NetWorthPoint>,
+    val monthly: List<MonthlyNetWorth> = emptyList(),
+    val allocation: List<AllocationSlice> = emptyList(),
 )
 
 data class ManualValuation(val date: LocalDate, val valueCents: Long)
@@ -80,7 +94,16 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
         val envelopes = envelopes().mapNotNull(::envelopeView)
         val liquid = cash.sumOf { it.balanceCents }
         val invested = envelopes.sumOf { it.valueCents }
-        return NetWorth(liquid + invested, liquid, invested, cash, envelopes, history(envelopes))
+        return NetWorth(
+            totalCents = liquid + invested,
+            liquidCents = liquid,
+            investedCents = invested,
+            cashAccounts = cash,
+            envelopes = envelopes,
+            history = history(envelopes),
+            monthly = monthly(envelopes),
+            allocation = allocation(cash, envelopes),
+        )
     }
 
     @Transactional
@@ -131,7 +154,98 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
             gainRatio = if (gain != null && contributions != null && contributions > 0) gain.toDouble() / contributions else null,
             holdings = holdings,
             availability = availability(envelope.id, statement.date),
+            performance = Performance.of(
+                all.filter { it.source == "STATEMENT" }.map { Performance.Statement(it.date, it.valueCents, it.contributionsCents) },
+                date,
+                value,
+            ),
         )
+    }
+
+    /**
+     * Fin de chaque mois depuis la première valeur connue : chaque compte pour sa dernière valeur connue à cette
+     * date (un compte n'apparaît qu'à partir de son premier relevé). Le mois en cours prend les valeurs actuelles.
+     */
+    private fun monthly(envelopes: List<EnvelopeView>): List<MonthlyNetWorth> {
+        val today = LocalDate.now(clock)
+        val types = jdbc.sql("select id, type from account").query { rs, _ -> rs.getLong(1) to AccountType.valueOf(rs.getString(2)) }
+            .list().toMap()
+        val series = accountSeries().mapValues { (_, points) -> points.map { Triple(it.first, it.second, false) } }.toMutableMap()
+        for (e in envelopes.filter { it.valueSource == ValueSource.ESTIMATED }) {
+            series[e.accountId] = (series[e.accountId].orEmpty() + Triple(e.valueDate, e.valueCents, true)).sortedBy { it.first }
+        }
+        val first = series.values.flatten().minOfOrNull { it.first } ?: return emptyList()
+        var month = java.time.YearMonth.from(first)
+        val last = java.time.YearMonth.from(today)
+        val points = mutableListOf<MonthlyNetWorth>()
+        while (month <= last) {
+            val date = minOf(month.atEndOfMonth(), today)
+            var liquid = 0L
+            var invested = 0L
+            var estimated = false
+            for ((id, s) in series) {
+                val point = s.lastOrNull { it.first <= date } ?: continue
+                if (types[id]?.let { it in INVESTMENT_TYPES } == true) invested += point.second else liquid += point.second
+                estimated = estimated || point.third
+            }
+            points += MonthlyNetWorth(month.toString(), date, liquid, invested, estimated)
+            month = month.plusMonths(1)
+        }
+        return points.takeLast(120)
+    }
+
+    /** Valeurs datées par compte : soldes de relevé des comptes, valorisations des enveloppes. */
+    private fun accountSeries(): Map<Long, List<Pair<LocalDate, Long>>> {
+        val series = mutableMapOf<Long, List<Pair<LocalDate, Long>>>()
+        jdbc.sql("select account_id, closing_date, closing_cents from statement_balance order by closing_date")
+            .query { rs, _ -> Triple(rs.getLong(1), LocalDate.parse(rs.getString(2)), rs.getLong(3)) }.list()
+            .groupBy { it.first }.forEach { (id, rows) -> series[id] = rows.map { it.second to it.third } }
+        jdbc.sql("select account_id, valuation_date, value_cents from valuation order by valuation_date, case source when 'STATEMENT' then 0 else 1 end")
+            .query { rs, _ -> Triple(rs.getLong(1), LocalDate.parse(rs.getString(2)), rs.getLong(3)) }.list()
+            .groupBy { it.first }.forEach { (id, rows) -> series[id] = rows.map { it.second to it.third } }
+        return series
+    }
+
+    /**
+     * Répartition par classe d'actifs. Une enveloppe se répartit comme les supports de son dernier relevé
+     * (valorisés au dernier cours) ; une valeur saisie à la main garde ces proportions.
+     */
+    private fun allocation(cash: List<CashAccountView>, envelopes: List<EnvelopeView>): List<AllocationSlice> {
+        val totals = mutableMapOf<AssetClass, Long>()
+        for (account in cash) {
+            val assetClass = if (account.type == AccountType.CHECKING) AssetClass.CURRENT_ACCOUNTS else AssetClass.SAVINGS_ACCOUNTS
+            totals.merge(assetClass, account.balanceCents, Long::plus)
+        }
+        for (e in envelopes) {
+            val parts = mutableMapOf<AssetClass, Long>()
+            e.holdings.forEach { parts.merge(classOf(it), it.currentValueCents, Long::plus) }
+            if (e.cashCents != 0L) parts.merge(AssetClass.ENVELOPE_CASH, e.cashCents, Long::plus)
+            for ((assetClass, cents) in scaled(parts, e.valueCents)) totals.merge(assetClass, cents, Long::plus)
+        }
+        return AssetClass.entries.mapNotNull { c -> totals[c]?.takeIf { it != 0L }?.let { AllocationSlice(c, it) } }
+    }
+
+    /** Parts ramenées à [total] en centimes entiers ; l'arrondi va à la plus grosse part. */
+    private fun scaled(parts: Map<AssetClass, Long>, total: Long): Map<AssetClass, Long> {
+        val base = parts.values.sum()
+        // Valeur sans supports connus (saisie sans relevé détaillé) : affichée comme non ventilée, pas devinée.
+        if (base == 0L) return if (total == 0L) emptyMap() else mapOf(AssetClass.UNALLOCATED to total)
+        if (base == total) return parts
+        val result = parts.mapValues { (_, cents) ->
+            BigDecimal(cents).multiply(BigDecimal(total)).divide(BigDecimal(base), 0, RoundingMode.HALF_UP).toLong()
+        }.toMutableMap()
+        val largest = result.maxBy { it.value }.key
+        result[largest] = result.getValue(largest) + (total - result.values.sum())
+        return result
+    }
+
+    private fun classOf(holding: HoldingView): AssetClass {
+        val name = java.text.Normalizer.normalize(holding.name, java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").uppercase()
+        return when {
+            holding.kind == SecurityKind.EURO_FUND -> AssetClass.EURO_FUNDS
+            listOf("MONETAIRE", "TRESORERIE", "MONEY MARKET").any { name.contains(it) } -> AssetClass.MONEY_MARKET
+            else -> AssetClass.EQUITY_AND_FUNDS
+        }
     }
 
     private fun holdings(accountId: Long, date: LocalDate): List<HoldingView> =
@@ -171,13 +285,7 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
 
     /** Patrimoine aux dates connues : chaque compte compte pour sa dernière valeur connue à cette date. */
     private fun history(envelopes: List<EnvelopeView>): List<NetWorthPoint> {
-        val series = mutableMapOf<Long, List<Pair<LocalDate, Long>>>()
-        jdbc.sql("select account_id, closing_date, closing_cents from statement_balance order by closing_date")
-            .query { rs, _ -> Triple(rs.getLong(1), LocalDate.parse(rs.getString(2)), rs.getLong(3)) }.list()
-            .groupBy { it.first }.forEach { (id, rows) -> series[id] = rows.map { it.second to it.third } }
-        jdbc.sql("select account_id, valuation_date, value_cents from valuation order by valuation_date")
-            .query { rs, _ -> Triple(rs.getLong(1), LocalDate.parse(rs.getString(2)), rs.getLong(3)) }.list()
-            .groupBy { it.first }.forEach { (id, rows) -> series[id] = rows.map { it.second to it.third } }
+        val series = accountSeries()
 
         val dates = series.values.flatten().map { it.first }.toSortedSet()
         val points = dates.map { date ->
@@ -206,6 +314,10 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
         ).query { rs, _ ->
             CashAccountView(rs.getLong(1), AccountType.valueOf(rs.getString(2)), rs.getString(3), rs.getLong(4), LocalDate.parse(rs.getString(5)))
         }.list().distinctBy { it.accountId }
+
+    companion object {
+        val INVESTMENT_TYPES = setOf(AccountType.PEA, AccountType.LIFE_INSURANCE, AccountType.PEE)
+    }
 
     private fun envelopes(): List<Envelope> =
         jdbc.sql("select id, type, name, institution, iban from account where type in ('PEA', 'LIFE_INSURANCE', 'PEE') order by type, name")

@@ -128,8 +128,23 @@ class PortfolioFlowTest(
         val life = worth["envelopes"].single { it["type"].asText() == "LIFE_INSURANCE" }
         assertEquals(EasyBourseFixtures.avTotal, life["valueCents"].asLong())
         assertEquals(194_500, life["contributionsCents"].asLong())
+        // Un seul relevé, valeur à sa date : rendement incalculable, champ présent (sérialisé, natif compris).
+        assertTrue(life.has("performance") && life["performance"].isNull)
         assertEquals(300_000 + EasyBourseFixtures.avTotal, worth["investedCents"].asLong())
         assertTrue(worth["history"].size() >= 2)
+
+        // Répartition : fonds en euros de l'assurance vie à part, total égal au patrimoine.
+        val allocation = worth["allocation"].associate { it["assetClass"].asText() to it["valueCents"].asLong() }
+        assertTrue((allocation["EURO_FUNDS"] ?: 0) > 0, allocation.toString())
+        assertTrue((allocation["EQUITY_AND_FUNDS"] ?: 0) > 0, allocation.toString())
+        assertEquals(worth["totalCents"].asLong(), allocation.values.sum())
+
+        // Fin de mois : le mois en cours vaut le patrimoine actuel, comptes et investissements séparés.
+        val monthly = worth["monthly"]
+        assertTrue(monthly.size() >= 1)
+        assertEquals(worth["totalCents"].asLong(), monthly.last()["totalCents"].asLong())
+        assertEquals(worth["investedCents"].asLong(), monthly.last()["investedCents"].asLong())
+        assertTrue(monthly.zipWithNext().all { (a, b) -> a["month"].asText() < b["month"].asText() })
 
         // Les enveloppes apparaissent avec leur valeur dans la liste des comptes.
         val accounts = get("/api/accounts")
