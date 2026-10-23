@@ -66,7 +66,9 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - Cumul des versements : lu sur le relevé PEA ; reconstitué pour l'AV depuis la page fiscale (versements au 31/12 N-1) + versements de l'année. Plus-value = valeur − versements.
 - Valeur d'une enveloppe, par ordre de préférence : **saisie manuelle** plus récente que tout, sinon **estimation** (parts du dernier relevé × dernier cours connu), sinon **valeur du relevé**. Le cours imprimé sur un relevé reste la référence pour sa date.
 - Cours : Yahoo Finance (recherche par ISIN puis historique quotidien), derrière `PriceProvider`. Garde-fous : euros uniquement, et cours à ±25 % du cours du relevé autour de sa date, sinon le symbole est écarté (mauvaise part). Introuvable = revérifié après 30 jours. Déclenché uniquement à la demande (« Actualiser les cours »).
-- Patrimoine dans le temps : à chaque date connue, chaque compte compte pour sa dernière valeur connue.
+- Patrimoine dans le temps : à chaque date connue, chaque compte compte pour sa dernière valeur connue. Vue par **fin de mois** (comptes et livrets / investissements), le mois en cours aux valeurs actuelles ; un compte n'apparaît qu'à partir de son premier relevé (dix ans au plus).
+- **Rendement d'une enveloppe** : taux de rendement interne (TRI) depuis le premier relevé qui imprime le cumul des versements, jusqu'à la valeur actuelle. Les versements d'une période (écart du cumul entre deux relevés) ne sont pas datés : placés au milieu de l'intervalle. Annualisé seulement sur un an ou plus, sinon rendement de la période ; rien sous 30 jours ni sans cumul des versements (PEE). Les taux sont des nombres à virgule, jamais les montants.
+- **Répartition par classe d'actifs** : comptes courants, livrets et épargne, liquidités des enveloppes, monétaire (supports dont le nom contient « monétaire », « trésorerie », « money market » : faute de classification sur les relevés), fonds en euros, actions et fonds. Une enveloppe se répartit comme les supports de son dernier relevé ; une valeur saisie à la main garde ces proportions.
 - **PEE Natixis** (avis d'opération d'épargne salariale, envoyé à chaque versement) : seule la page « Situation de vos avoirs » est lue (placements par date de disponibilité, valeur de part, parts, montant, total). Contrôle : somme des lignes = total = somme par date de disponibilité. Les FCPE n'ont pas d'ISIN sur l'avis : identifiés par leur nom, valeur au relevé (ou saisie manuelle), pas de cours automatique. Pas de cumul des versements sur ce document. Identifiant de l'enveloppe : numéro d'entreprise (un PEE par employeur). Répartition disponible / bloqué conservée à chaque relevé.
 - `account.iban` sert d'identifiant de compte : IBAN, ou numéro de contrat pour une enveloppe.
 
@@ -128,6 +130,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
+- 23/10/2026 — Version 0.6.0. Patrimoine : fins de mois, rendement des enveloppes (TRI, versements déduits) et répartition par classe d'actifs (#4).
 - 23/10/2026 — Version 0.5.0. Import des exports CSV et OFX (#3) : correspondance des colonnes, soldes de contrôle obligatoires, doublons par date et montant face aux relevés PDF.
 - 22/10/2026 — Feuille de route publiée en issues (#3 à #9).
 - 22/10/2026 — Publication : la première tentative de la 0.4.0 s'est arrêtée à la signature (installeurs téléchargés dans des sous-dossiers) ; artefacts mis à plat avant signature et publication, version et tag recréés.

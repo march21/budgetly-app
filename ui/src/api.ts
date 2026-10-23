@@ -238,6 +238,7 @@ export type Envelope = {
   gainRatio: number | null;
   holdings: Holding[];
   availability: Availability[];
+  performance: EnvelopePerformance | null;
 };
 
 export type NetWorth = {
@@ -247,6 +248,21 @@ export type NetWorth = {
   cashAccounts: { accountId: number; type: AccountType; name: string; balanceCents: number; balanceDate: string }[];
   envelopes: Envelope[];
   history: { date: string; totalCents: number; estimated: boolean }[];
+  monthly: { month: string; date: string; liquidCents: number; investedCents: number; totalCents: number; estimated: boolean }[];
+  allocation: { assetClass: AssetClass; valueCents: number }[];
+};
+
+export type AssetClass = "CURRENT_ACCOUNTS" | "SAVINGS_ACCOUNTS" | "ENVELOPE_CASH" | "MONEY_MARKET" | "EURO_FUNDS" | "EQUITY_AND_FUNDS";
+
+export type EnvelopePerformance = {
+  sinceDate: string;
+  untilDate: string;
+  startValueCents: number;
+  netContributionsCents: number;
+  endValueCents: number;
+  gainCents: number;
+  periodRate: number;
+  annualizedRate: number | null;
 };
 
 export type PriceReport = {

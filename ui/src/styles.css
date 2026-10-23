@@ -11,6 +11,13 @@
   --debit: #a8433a;
   --warn: #8a5a00;
   --focus: #1d6e77;
+  /* Séries des graphiques (ordre fixe, validé daltonisme et contraste) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #6250d6;
   --radius-control: 6px;
   --radius-panel: 10px;
   font-family: "Public Sans Variable", system-ui, sans-serif;
@@ -39,6 +46,12 @@
   --debit: #ef8a7f;
   --warn: #e2b04e;
   --focus: #4fb3bd;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #9085e9;
   color-scheme: dark;
 }
 
@@ -56,6 +69,12 @@
     --debit: #ef8a7f;
     --warn: #e2b04e;
     --focus: #4fb3bd;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #9085e9;
     color-scheme: dark;
   }
 }
@@ -1527,4 +1546,86 @@ select {
 
 .tabular-sample td.tabular-header {
   font-weight: 600;
+}
+
+/* Patrimoine : fins de mois, répartition, rendement */
+.worth-month .seg--liquid {
+  fill: var(--series-1);
+}
+
+.worth-month .seg--invested {
+  fill: var(--series-2);
+}
+
+.worth-month .seg--estimated {
+  opacity: 0.75;
+}
+
+.worth-month .month-hit {
+  fill: transparent;
+}
+
+.worth-month.month--active .month-hit {
+  fill: var(--line);
+  opacity: 0.6;
+}
+
+.history-chart .grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.history-chart .tick {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.worth-readout {
+  font-size: 13.5px;
+  color: var(--muted);
+  min-height: 1.4em;
+  margin: 0;
+}
+
+.worth-readout strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+}
+
+.allocation {
+  display: grid;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.allocation-bar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+}
+
+.allocation-bar > span {
+  display: block;
+  min-width: 3px;
+}
+
+.allocation-bar > span:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.allocation-bar > span:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.allocation td.num {
+  white-space: nowrap;
 }

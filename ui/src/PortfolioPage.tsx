@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { api, ApiError, type Availability, type Envelope, type NetWorth, type PriceReport } from "./api";
+import { api, ApiError, type AssetClass, type Availability, type Envelope, type NetWorth, type PriceReport } from "./api";
 import { Amount } from "./Amount";
 import { amount, longDate, noIsinLabel, parseEuros, percent, shortDate } from "./format";
 
@@ -10,6 +10,20 @@ const statusLabel: Record<string, string> = {
   ERROR: "Source injoignable",
   UNAVAILABLE: "Aucune source configurée",
 };
+
+const rate = new Intl.NumberFormat("fr-FR", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: "exceptZero" });
+const share = new Intl.NumberFormat("fr-FR", { style: "percent", maximumFractionDigits: 0 });
+const monthName = new Intl.DateTimeFormat("fr-FR", { month: "short", year: "numeric" });
+const compact = new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 });
+
+const assetClasses: { key: AssetClass; label: string; color: string }[] = [
+  { key: "CURRENT_ACCOUNTS", label: "Comptes courants", color: "var(--series-1)" },
+  { key: "SAVINGS_ACCOUNTS", label: "Livrets et épargne", color: "var(--series-2)" },
+  { key: "ENVELOPE_CASH", label: "Liquidités des enveloppes", color: "var(--series-3)" },
+  { key: "MONEY_MARKET", label: "Monétaire", color: "var(--series-4)" },
+  { key: "EURO_FUNDS", label: "Fonds en euros", color: "var(--series-5)" },
+  { key: "EQUITY_AND_FUNDS", label: "Actions et fonds", color: "var(--series-6)" },
+];
 
 const quantity = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 5 });
 const unitPrice = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
@@ -76,7 +90,8 @@ export function PortfolioPage({ onChanged, onImport }: { onChanged: () => void; 
         </div>
       </dl>
 
-      {worth.history.length >= 2 && <NetWorthChart points={worth.history} />}
+      {worth.monthly.length >= 2 && <MonthlyChart months={worth.monthly} />}
+      {worth.allocation.some((a) => a.valueCents > 0) && <AllocationPanel slices={worth.allocation} />}
 
       <section className="prices">
         <div className="prices-header">
@@ -187,6 +202,15 @@ function EnvelopeSection({ envelope, onSaved }: { envelope: Envelope; onSaved: (
             <dd>
               <Amount cents={envelope.gainCents} signed />
               {envelope.gainRatio !== null && <span className="muted"> ({percent(envelope.gainRatio)})</span>}
+            </dd>
+          </div>
+        )}
+        {envelope.performance && (
+          <div>
+            <dt>{envelope.performance.annualizedRate !== null ? "Rendement annualisé" : "Rendement"}</dt>
+            <dd title="Taux de rendement interne : versements et retraits déduits, placés au milieu de chaque intervalle entre deux relevés.">
+              {rate.format(envelope.performance.annualizedRate ?? envelope.performance.periodRate)}
+              <span className="muted"> depuis le {longDate(envelope.performance.sinceDate)}</span>
             </dd>
           </div>
         )}
@@ -323,42 +347,127 @@ function ManualValuationForm({ envelope, onSaved }: { envelope: Envelope; onSave
   );
 }
 
-/** Patrimoine total aux dates connues ; le dernier point est estimé quand il s'appuie sur des cours récents. */
-function NetWorthChart({ points }: { points: NetWorth["history"] }) {
+/** Patrimoine en fin de mois : comptes et livrets en bas, investissements au-dessus. */
+function MonthlyChart({ months }: { months: NetWorth["monthly"] }) {
+  const [active, setActive] = useState(months.length - 1);
   const width = 720;
-  const height = 180;
-  const pad = { top: 16, bottom: 26, left: 8, right: 8 };
-  const times = points.map((p) => new Date(`${p.date}T12:00:00`).getTime());
-  const min = Math.min(...points.map((p) => p.totalCents));
-  const max = Math.max(...points.map((p) => p.totalCents));
-  const span = Math.max(max - min, max * 0.05, 1);
-  const lo = min - span * 0.1;
-  const hi = max + span * 0.1;
-  const x = (t: number) => pad.left + ((t - times[0]) / Math.max(times[times.length - 1] - times[0], 1)) * (width - pad.left - pad.right);
-  const y = (v: number) => pad.top + (1 - (v - lo) / (hi - lo)) * (height - pad.top - pad.bottom);
-  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(times[i]).toFixed(1)},${y(p.totalCents).toFixed(1)}`).join(" ");
-  const last = points[points.length - 1];
+  const height = 200;
+  const pad = { top: 12, bottom: 24, left: 44, right: 4 };
+  const max = Math.max(...months.map((m) => Math.max(m.liquidCents, 0) + Math.max(m.investedCents, 0)), 1);
+  const step = niceStep(max / 3);
+  const top = Math.ceil(max / step) * step;
+  const plotH = height - pad.top - pad.bottom;
+  const slot = (width - pad.left - pad.right) / months.length;
+  const barW = Math.max(Math.min(slot * 0.7, 28), 2);
+  const y = (v: number) => pad.top + plotH - (v / top) * plotH;
+  const ticks = Array.from({ length: Math.round(top / step) + 1 }, (_, i) => i * step);
+  const labelEvery = Math.ceil(months.length / 8);
+  const current = months[Math.min(active, months.length - 1)];
 
   return (
-    <section className="history-chart" aria-label="Évolution du patrimoine">
+    <section className="history-chart" aria-label="Patrimoine en fin de mois">
       <div className="history-chart-header">
         <h2>Évolution</h2>
-        <p className="muted">Chaque compte compte pour sa dernière valeur connue à chaque date.</p>
+        <span className="legend">
+          <span className="swatch" style={{ background: "var(--series-1)" }} />
+          Comptes et livrets
+          <span className="swatch" style={{ background: "var(--series-2)", marginLeft: 10 }} />
+          Investissements
+        </span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Patrimoine total dans le temps">
-        <path d={path} className="worth-line" />
-        {points.map((p, i) => (
-          <circle key={p.date} cx={x(times[i])} cy={y(p.totalCents)} r={p.estimated ? 4 : 3} className={p.estimated ? "worth-point worth-point--estimated" : "worth-point"}>
-            <title>{`${longDate(p.date)} · ${amount(p.totalCents)}${p.estimated ? " (estimé)" : ""}`}</title>
-          </circle>
+      <p className="worth-readout" aria-live="polite">
+        {active >= months.length - 1 ? "Aujourd'hui" : `Fin ${monthName.format(new Date(`${current.month}-15T12:00:00`))}`}{" "}
+        · <strong>{amount(current.totalCents)}</strong> · comptes {amount(current.liquidCents)} · investissements {amount(current.investedCents)}
+        {current.estimated && " (estimé d'après les derniers cours)"}
+      </p>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Patrimoine en fin de mois, comptes et investissements" onMouseLeave={() => setActive(months.length - 1)}>
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} className="grid" />
+            <text x={pad.left - 6} y={y(t) + 4} textAnchor="end" className="tick">
+              {compact.format(t / 100)}
+            </text>
+          </g>
         ))}
-        <text x={x(times[0])} y={height - 6} className="month-label">
-          {shortDate(points[0].date)}
-        </text>
-        <text x={x(times[times.length - 1])} y={height - 6} textAnchor="end" className="month-label">
-          {shortDate(last.date)}
-        </text>
+        {months.map((m, i) => {
+          const x = pad.left + i * slot + (slot - barW) / 2;
+          const liquid = Math.max(m.liquidCents, 0);
+          const invested = Math.max(m.investedCents, 0);
+          const liquidTop = y(liquid);
+          const investedTop = y(liquid + invested);
+          const gap = liquid > 0 && invested > 0 ? 2 : 0;
+          return (
+            <g
+              key={m.month}
+              className={`worth-month month ${i === active ? "month--active" : ""}`}
+              onMouseEnter={() => setActive(i)}
+              onFocus={() => setActive(i)}
+              tabIndex={0}
+            >
+              <rect x={pad.left + i * slot} y={pad.top} width={slot} height={plotH} className="month-hit" />
+              {liquid > 0 && (
+                <rect x={x} y={liquidTop} width={barW} height={Math.max(y(0) - liquidTop, 0)} className={`seg seg--liquid ${m.estimated ? "seg--estimated" : ""}`} />
+              )}
+              {invested > 0 && (
+                <rect x={x} y={investedTop} width={barW} height={Math.max(liquidTop - investedTop - gap, 0)} rx={Math.min(4, barW / 2)} className={`seg seg--invested ${m.estimated ? "seg--estimated" : ""}`} />
+              )}
+              {((i % labelEvery === 0 && months.length - 1 - i >= labelEvery) || i === months.length - 1) && (
+                <text x={pad.left + i * slot + slot / 2} y={height - 6} textAnchor="middle" className="month-label">
+                  {monthName.format(new Date(`${m.month}-15T12:00:00`))}
+                </text>
+              )}
+              <title>{`${m.month} · ${amount(m.totalCents)}`}</title>
+            </g>
+          );
+        })}
       </svg>
+      <p className="muted">Chaque compte compte pour sa dernière valeur connue à la fin du mois, à partir de son premier relevé.</p>
+    </section>
+  );
+}
+
+function niceStep(raw: number): number {
+  const power = 10 ** Math.floor(Math.log10(Math.max(raw, 1)));
+  const n = raw / power;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * power;
+}
+
+/** Répartition par classe d'actifs : barre empilée et tableau des montants (la couleur n'est jamais seule). */
+function AllocationPanel({ slices }: { slices: NetWorth["allocation"] }) {
+  const positive = assetClasses
+    .map((c) => ({ ...c, cents: slices.find((s) => s.assetClass === c.key)?.valueCents ?? 0 }))
+    .filter((c) => c.cents !== 0);
+  const total = positive.reduce((sum, c) => sum + Math.max(c.cents, 0), 0);
+  return (
+    <section className="allocation" aria-labelledby="allocation-title">
+      <h2 id="allocation-title">Répartition</h2>
+      <div className="allocation-bar" role="img" aria-label="Répartition du patrimoine par classe d'actifs">
+        {positive
+          .filter((c) => c.cents > 0)
+          .map((c) => (
+            <span key={c.key} style={{ flexGrow: c.cents, background: c.color }} title={`${c.label} · ${amount(c.cents)} · ${share.format(c.cents / total)}`} />
+          ))}
+      </div>
+      <table>
+        <tbody>
+          {positive.map((c) => (
+            <tr key={c.key}>
+              <td>
+                <span className="swatch" style={{ background: c.color }} />
+                {c.label}
+              </td>
+              <td className="num">
+                <Amount cents={c.cents} />
+              </td>
+              <td className="num muted">{c.cents > 0 && total > 0 ? share.format(c.cents / total) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted">
+        Une enveloppe se répartit comme les supports de son dernier relevé. Les supports dont le nom évoque le monétaire
+        (« monétaire », « trésorerie ») sont comptés à part.
+      </p>
     </section>
   );
 }
