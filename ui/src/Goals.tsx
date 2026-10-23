@@ -183,7 +183,7 @@ function GoalForm({ accounts, goal, onDone }: { accounts: Account[]; goal?: Goal
         <button type="submit" className="primary" disabled={!valid || busy}>
           {goal ? "Enregistrer" : "Ajouter"}
         </button>
-        <button type="button" onClick={onDone}>
+        <button type="button" className="secondary" onClick={onDone}>
           Annuler
         </button>
         {goal && (
