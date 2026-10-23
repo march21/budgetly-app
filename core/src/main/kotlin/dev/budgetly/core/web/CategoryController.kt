@@ -8,10 +8,16 @@ import dev.budgetly.core.categories.RuleSuggestion
 import dev.budgetly.core.categories.RuleView
 import dev.budgetly.core.categories.SplitPart
 import dev.budgetly.core.imports.ApiException
+import dev.budgetly.core.ledger.AnnualReportPdf
+import dev.budgetly.core.ledger.AnnualReview
+import dev.budgetly.core.ledger.AnnualReviewService
 import dev.budgetly.core.ledger.MonthSummary
 import dev.budgetly.core.ledger.MonthlySummary
 import dev.budgetly.core.ledger.SummaryHistory
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -48,6 +54,7 @@ data class NoteRequest(val note: String?)
 class CategoryController(
     private val categories: CategoryService,
     private val summary: MonthlySummary,
+    private val annual: AnnualReviewService,
     private val clock: Clock,
 ) {
     @GetMapping("/categories")
@@ -107,6 +114,19 @@ class CategoryController(
         @RequestParam(required = false) month: String?,
         @RequestParam(required = false, defaultValue = "12") months: Int,
     ): SummaryHistory = summary.history(parse(month), months.coerceIn(1, 36))
+
+    @GetMapping("/summary/year")
+    fun year(@RequestParam(required = false) year: Int?): AnnualReview = annual.review(year ?: YearMonth.now(clock).year)
+
+    /** Bilan annuel en PDF, généré à la volée (jamais écrit sur disque). */
+    @GetMapping("/summary/year/report.pdf")
+    fun yearPdf(@RequestParam(required = false) year: Int?): ResponseEntity<ByteArray> {
+        val review = annual.review(year ?: YearMonth.now(clock).year)
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"budgetly-bilan-${review.year}.pdf\"")
+            .contentType(MediaType.APPLICATION_PDF)
+            .body(AnnualReportPdf.write(review, clock.instant(), java.time.ZoneId.systemDefault()))
+    }
 
     private fun parse(month: String?): YearMonth = try {
         month?.let(YearMonth::parse) ?: YearMonth.now(clock)

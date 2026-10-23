@@ -8,10 +8,11 @@ import { PortfolioPage } from "./PortfolioPage";
 import { ImportsPage } from "./ImportsPage";
 import { SettingsPage } from "./SettingsPage";
 import { RecurringPage } from "./RecurringPage";
+import { AnnualPage } from "./AnnualPage";
 import { Amount } from "./Amount";
 import { currentMonth, longDate } from "./format";
 
-type Page = "dashboard" | "recurring" | "portfolio" | "transactions" | "imports" | "categories" | "settings";
+type Page = "dashboard" | "annual" | "recurring" | "portfolio" | "transactions" | "imports" | "categories" | "settings";
 
 export function App() {
   const [vault, setVault] = useState<VaultStatus | null>(null);
@@ -88,6 +89,7 @@ function Shell({ onLocked, minPasswordLength }: { onLocked: () => void; minPassw
 
   const navItems: { page: Page; label: string }[] = [
     { page: "dashboard", label: "Tableau de bord" },
+    { page: "annual", label: "Bilan de l'année" },
     { page: "recurring", label: "Charges fixes" },
     { page: "portfolio", label: "Patrimoine" },
     { page: "transactions", label: "Opérations" },
@@ -165,6 +167,7 @@ function Shell({ onLocked, minPasswordLength }: { onLocked: () => void; minPassw
             onShowCategory={(id) => showTransactions(id, dashboardMonth)}
           />
         )}
+        {page === "annual" && <AnnualPage key={revision} />}
         {page === "recurring" && <RecurringPage key={revision} onImport={() => setPage("imports")} />}
         {page === "portfolio" && <PortfolioPage onChanged={reload} onImport={() => setPage("imports")} />}
         {page === "transactions" && (

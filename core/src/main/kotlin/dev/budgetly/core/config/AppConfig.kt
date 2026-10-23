@@ -11,7 +11,13 @@ import org.springframework.context.annotation.Configuration
 import java.time.Clock
 
 @Configuration(proxyBeanMethods = false)
-class AppConfig {
+class AppConfig(props: BudgetlyProperties) {
+
+    init {
+        // PDFBox garde la liste des polices du système dans un cache (.pdfbox.cache) : dans le dossier de données
+        // plutôt que dans le dossier personnel, pour que rien ne soit écrit ailleurs.
+        if (System.getProperty("pdfbox.fontcache") == null) System.setProperty("pdfbox.fontcache", props.dataDir.toAbsolutePath().toString())
+    }
 
     @Bean
     fun clock(): Clock = Clock.systemUTC()

@@ -1758,3 +1758,39 @@ select {
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* Bilan de l'année */
+.annual-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.figure-compare {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.annual-moves {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.annual-move ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.annual-move li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
