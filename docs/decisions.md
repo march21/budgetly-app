@@ -94,7 +94,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 
 ## 6. Stack technique
 - Cœur : **Kotlin 1.9 + Spring Boot 3.5 + PDFBox 3**, Java 21.
-- Packaging : **image native GraalVM** (pas de JVM embarquée dans l'app desktop).
+- Packaging : **image native GraalVM** (pas de JVM embarquée dans l'app desktop), compilée avec **Liberica NIK** complet (JDK 21) depuis la 0.8.0 : AWT pris en charge sur Windows, Linux et macOS (GraalVM Community ne le fait pas sur macOS), versions à jour (native-image Community 21.0.2 plantait par intermittence, `ArrayIndexOutOfBoundsException` interne).
 - UI : **React + Vite + TypeScript**.
 - Desktop : **Tauri 2**.
 - Règle : **build natif GraalVM dans la CI dès la phase 0**, avec tests de parsing PDF, de chiffrement et d'API exécutés en natif. Dev quotidien en JVM classique.
@@ -130,6 +130,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
+- 23/10/2026 — Image native compilée avec Liberica NIK (JDK 21) partout ; bibliothèques AWT livrées seulement si l'image en a besoin.
 - 23/10/2026 — Paquet macOS Apple Silicon (dmg, mise à jour automatique par `.app.tar.gz` signé). Non signé par Apple (Developer ID 99 $/an) : premier lancement par « Ouvrir quand même ». Signature des installeurs à l'étude (Windows : SignPath Foundation gratuit pour l'open source, ou Certum Open Source ; Microsoft Artifact Signing fermé aux particuliers hors États-Unis et Canada).
 - 23/10/2026 — Version 0.6.0. Patrimoine : fins de mois, rendement des enveloppes (TRI, versements déduits) et répartition par classe d'actifs (#4).
 - 23/10/2026 — Version 0.5.0. Import des exports CSV et OFX (#3) : correspondance des colonnes, soldes de contrôle obligatoires, doublons par date et montant face aux relevés PDF.

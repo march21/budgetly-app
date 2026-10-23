@@ -1,5 +1,7 @@
 name: Paquets desktop
 
+# Image native : Liberica NIK complet (AWT sur les trois systèmes, dont macOS que GraalVM Community ne couvre pas ;
+# versions de JDK 21 à jour, sans le plantage intermittent de native-image 21.0.2).
 # Installeurs Windows (NSIS), Linux (deb) et macOS Apple Silicon (dmg, + .app.tar.gz pour la mise à jour). Chaque OS trace ses propres métadonnées natives
 # (bibliothèque SQLite et JNI AWT propres à la plateforme) avant de compiler l'image.
 # Lancement manuel (Actions → « Run workflow »), PR étiquetée « paquets » (ou « metadonnees-natives » pour
@@ -56,21 +58,22 @@ jobs:
             exe: .exe
             libs: "*.dll"
             python: python
-            graalvm: graalvm-community
+            graalvm: liberica
+            java_package: jdk+fx
           - name: Linux
             os: ubuntu-22.04
             triple: x86_64-unknown-linux-gnu
             exe: ""
             libs: "*.so"
             python: python3
-            graalvm: graalvm-community
+            graalvm: liberica
+            java_package: jdk+fx
           - name: macOS
             os: macos-14
             triple: aarch64-apple-darwin
             exe: ""
             libs: "*.dylib"
             python: python3
-            # GraalVM Community ne prend pas en charge AWT sur macOS (PDFBox en dépend) : Liberica NIK complet.
             graalvm: liberica
             java_package: jdk+fx
     defaults:
@@ -146,7 +149,10 @@ jobs:
           bin=desktop/src-tauri/binaries
           mkdir -p $bin/lib
           cp $out/budgetly-core${{ matrix.exe }} $bin/budgetly-core-${{ matrix.triple }}${{ matrix.exe }}
-          cp $out/${{ matrix.libs }} $bin/lib/
+          # Liberica NIK lie AWT dans le binaire sur certaines plateformes : pas de bibliothèque à livrer. Le dossier
+          # lib/ reste non vide pour la ressource Tauri « binaries/lib/* ».
+          cp $out/${{ matrix.libs }} $bin/lib/ 2>/dev/null || true
+          ls $bin/lib/* >/dev/null 2>&1 || echo "Bibliothèques natives : aucune (liées dans le binaire)." > $bin/lib/LISEZMOI.txt
           echo "::notice title=Bibliothèques livrées ${{ matrix.name }}::$(ls $bin/lib | tr '\n' ' ')"
       - name: Dépendances système Tauri
         if: runner.os == 'Linux'

@@ -59,7 +59,8 @@ jobs:
       - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173 # v1.6.7
         with:
           java-version: 21
-          distribution: graalvm-community
+          distribution: liberica
+          java-package: jdk+fx
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       # Les métadonnées natives sont versionnées (union Linux + Windows). Les tests JVM tournent sous l'agent
@@ -97,7 +98,8 @@ jobs:
       - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173 # v1.6.7
         with:
           java-version: 21
-          distribution: graalvm-community
+          distribution: liberica
+          java-package: jdk+fx
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Tests en natif (PDFBox, base chiffrée, API)
@@ -123,7 +125,8 @@ jobs:
       - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173 # v1.6.7
         with:
           java-version: 21
-          distribution: graalvm-community
+          distribution: liberica
+          java-package: jdk+fx
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Compilation de l'image native
@@ -222,7 +225,7 @@ jobs:
           mv binaries/budgetly-core binaries/budgetly-core-x86_64-unknown-linux-gnu
           chmod +x binaries/budgetly-core-x86_64-unknown-linux-gnu
           mkdir -p binaries/lib
-          mv binaries/*.so binaries/lib/
+          mv binaries/*.so binaries/lib/ 2>/dev/null || echo "Bibliothèques natives : aucune (liées dans le binaire)." > binaries/lib/LISEZMOI.txt
       - run: cargo build --locked 2>&1 | tee cargo.log; exit ${PIPESTATUS[0]}
         shell: bash
       - name: Erreurs Rust en annotations
