@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, type Installment, type Loan, type LoanRequest } from "./api";
-import { amount, longDate, parseEuros, shortDate } from "./format";
+import { amount, longDate, parseEuros } from "./format";
+
+const dayMonthYear = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+const scheduleDate = (iso: string) => dayMonthYear.format(new Date(`${iso}T12:00:00`));
 
 const ratePct = (rate: string) => `${rate.replace(".", ",")} %`;
 
@@ -131,7 +134,7 @@ function LoanItem({ loan, onEdit }: { loan: Loan; onEdit: () => void }) {
               {schedule.map((i) => (
                 <tr key={i.number} className={i.number <= loan.paidInstallments ? "row--muted" : ""}>
                   <td>{i.number}</td>
-                  <td>{shortDate(i.date)}</td>
+                  <td>{scheduleDate(i.date)}</td>
                   <td className="num">{amount(i.paymentCents)}</td>
                   <td className="num">{amount(i.interestCents)}</td>
                   <td className="num">{amount(i.principalCents)}</td>
