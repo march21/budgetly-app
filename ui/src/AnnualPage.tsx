@@ -55,7 +55,8 @@ export function AnnualPage() {
       {review && review.monthsWithData > 0 && (
         <>
           <p className="muted">
-            {year}, {period}, comparé à la même période de {year - 1}. Le PDF est généré sur cet ordinateur et n'est pas
+            {year}, {period}, comparé à la même période de {year - 1}
+            {year === thisYear && " (jusqu'au dernier mois complet)"}. Le PDF est généré sur cet ordinateur et n'est pas
             chiffré : rangez-le en conséquence.
           </p>
           <dl className="figures">

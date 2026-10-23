@@ -58,6 +58,11 @@ object AnnualReportPdf {
             review.increases.forEach { writer.row(listOf(it.name, euros(it.cents), euros(it.previousCents), euros(it.deltaCents, true))) }
             writer.space(14f)
         }
+        if (review.decreases.isNotEmpty()) {
+            writer.line("Plus fortes baisses de dépenses", bold, 12f, gapAfter = 6f)
+            review.decreases.forEach { writer.row(listOf(it.name, euros(it.cents), euros(it.previousCents), euros(it.deltaCents, true))) }
+            writer.space(14f)
+        }
         writer.line("Dépenses par catégorie", bold, 12f, gapAfter = 6f)
         writer.row(listOf("Catégorie", review.year.toString(), (review.year - 1).toString(), "Écart"), bold)
         review.expenses.forEach { writer.row(listOf(it.name, euros(it.cents), euros(it.previousCents), euros(it.deltaCents, true))) }
@@ -103,7 +108,7 @@ object AnnualReportPdf {
         fun line(text: String, font: PDType1Font, size: Float, gapAfter: Float = 4f) {
             ensure(size + gapAfter)
             y -= size
-            text(MARGIN, text, font, size)
+            text(MARGIN, safe(text, font), font, size)
             y -= gapAfter
         }
 
@@ -111,7 +116,8 @@ object AnnualReportPdf {
         fun row(cells: List<String>, font: PDType1Font = regular, size: Float = 9.5f) {
             ensure(size + 5f)
             y -= size
-            text(columns[0], truncate(cells[0], font, size, widths[0]), font, size)
+            // Remplacement des caractères hors encodage avant toute mesure (getStringWidth échoue sinon).
+            text(columns[0], truncate(safe(cells[0], font), font, size, widths[0]), font, size)
             for (i in 1 until cells.size) {
                 val right = if (i < columns.size - 1) columns[i + 1] - 10f else page.mediaBox.width - MARGIN
                 val width = font.getStringWidth(cells[i]) / 1000 * size
@@ -136,7 +142,7 @@ object AnnualReportPdf {
         }
 
         /** Caractères absents de l'encodage des polices standard (catégories saisies librement) : remplacés. */
-        private fun safe(value: String, font: PDType1Font): String = buildString {
+        fun safe(value: String, font: PDType1Font): String = buildString {
             for (c in value) {
                 val ok = try {
                     font.encode(c.toString()); true

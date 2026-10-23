@@ -25,6 +25,8 @@ class LocalAccessFilter(private val props: BudgetlyProperties) : OncePerRequestF
             response.status = HttpServletResponse.SC_FORBIDDEN
             return
         }
+        // Réponses de l'API (montants, libellés, exports) : jamais gardées dans le cache du webview, sur disque et en clair.
+        if (request.requestURI.startsWith("/api/")) response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store")
 
         val token = props.launchToken
         if (token.isBlank()) {

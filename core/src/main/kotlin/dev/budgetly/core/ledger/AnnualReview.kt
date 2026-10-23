@@ -20,8 +20,8 @@ data class AnnualMonth(val month: YearMonth, val incomeCents: Long, val expenseC
 data class AnnualTotals(val incomeCents: Long, val expenseCents: Long, val savingsCents: Long, val savingsRate: Double?)
 
 /**
- * Bilan d'une année, comparé à la même période de l'année précédente : pour l'année en cours, de janvier au mois
- * courant (« à date »), pour que la comparaison porte sur autant de mois.
+ * Bilan d'une année, comparé à la même période de l'année précédente : pour l'année en cours, de janvier au
+ * dernier mois complet, pour que la comparaison porte sur autant de mois entiers.
  */
 data class AnnualReview(
     val year: Int,
@@ -55,7 +55,13 @@ class AnnualReviewService(private val summary: MonthlySummary, private val clock
     fun review(year: Int): AnnualReview {
         val now = YearMonth.now(clock)
         if (year < 2000 || year > now.year) throw ApiException(HttpStatus.BAD_REQUEST, "INVALID_YEAR", "Année inconnue.")
-        val through = if (year == now.year) now else YearMonth.of(year, 12)
+        // Année en cours : jusqu'au dernier mois complet (le mois courant n'est pas fini, souvent pas encore importé).
+        // En janvier, faute de mois complet, janvier en cours.
+        val through = when {
+            year < now.year -> YearMonth.of(year, 12)
+            now.monthValue == 1 -> now
+            else -> now.minusMonths(1)
+        }
         val months = (1..through.monthValue).map { YearMonth.of(year, it) }
         val current = months.map(summary::month)
         val previous = months.map { summary.month(it.minusYears(1)) }

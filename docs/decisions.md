@@ -73,8 +73,9 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - `account.iban` sert d'identifiant de compte : IBAN, ou numéro de contrat pour une enveloppe.
 
 ## 4 septies. Bilan annuel
-- Année comparée à la **même période** de l'année précédente : pour l'année en cours, de janvier au mois courant, pour comparer autant de mois. Totaux (revenus, dépenses, épargne versée, taux d'épargne), catégories principales, cinq plus fortes hausses et baisses de dépenses, détail mois par mois.
-- **PDF généré sur la machine** par PDFBox (polices standard, aucun fichier écrit sur disque : il part directement dans la réponse). Montants formatés en entiers avec espace insécable ; un caractère hors de l'encodage des polices standard (nom de catégorie libre) est remplacé par « ? ». Le PDF n'est pas chiffré : l'interface le rappelle.
+- Année comparée à la **même période** de l'année précédente : pour l'année en cours, de janvier au **dernier mois complet** (le mois courant, inachevé et souvent pas encore importé, fausserait la comparaison ; en janvier, janvier en cours). Totaux (revenus, dépenses, épargne versée, taux d'épargne), catégories principales, cinq plus fortes hausses et baisses de dépenses, détail mois par mois.
+- **PDF généré sur la machine** par PDFBox (polices standard, aucun fichier écrit sur disque : il part directement dans la réponse). Montants formatés en entiers avec espace insécable ; un caractère hors de l'encodage des polices standard (nom de catégorie libre) est remplacé par « ? » avant toute mesure, sans erreur ni trace. Le PDF n'est pas chiffré : l'interface le rappelle.
+- Réponses de l'API en `Cache-Control: no-store` : rien n'est gardé dans le cache du webview. Cache des polices de PDFBox (`.pdfbox.cache`) dans le dossier de données plutôt que dans le dossier personnel.
 
 ## 4 sexies. Objectifs d'épargne
 - Un objectif = un montant visé, une date facultative, et un suivi : **le solde d'un compte** (dernier relevé, ou valeur actuelle d'une enveloppe) ou **un montant saisi**. Effort mensuel prévu facultatif.
