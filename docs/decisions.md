@@ -77,6 +77,12 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - **PDF généré sur la machine** par PDFBox (polices standard, aucun fichier écrit sur disque : il part directement dans la réponse). Montants formatés en entiers avec espace insécable ; un caractère hors de l'encodage des polices standard (nom de catégorie libre) est remplacé par « ? » avant toute mesure, sans erreur ni trace. Le PDF n'est pas chiffré : l'interface le rappelle.
 - Réponses de l'API en `Cache-Control: no-store` : rien n'est gardé dans le cache du webview. Cache des polices de PDFBox (`.pdfbox.cache`) dans le dossier de données plutôt que dans le dossier personnel.
 
+## 4 octies. Crédits
+- Crédits **saisis à la main** (aucun relevé de prêt lu) : montant emprunté, taux nominal annuel (décimal exact, 0 à 20 %), date de première échéance, durée (1 à 480 mois), assurance mensuelle facultative, libellé du prélèvement facultatif.
+- **Échéances constantes** : M = P × r × (1+r)ⁿ / ((1+r)ⁿ − 1), r = taux / 12 ; intérêts du mois = capital restant × r, arrondis au centime ; la dernière échéance solde l'écart d'arrondi. Calcul en `BigDecimal`, jamais en flottants. L'assurance s'ajoute à l'échéance sans réduire le capital. Remboursement anticipé, différé et taux variable non gérés (le crédit se modifie).
+- **Patrimoine net** = avoirs − capital restant dû (échéances passées au jour près) ; aussi en fin de mois. Un crédit compte à partir du mois précédant sa première échéance (déblocage), pour le montant emprunté jusqu'à cette échéance ; avant, rien. Première échéance entre 1950 et 2100. `totalCents` reste le total des avoirs (répartition inchangée), `netCents` et `debtCents` s'y ajoutent.
+- **Échéances retrouvées** : opérations de débit dont le libellé contient le texte donné et dont le montant vaut l'échéance (assurance comprise) à 1 € près ; seulement compter et dater, rien n'est modifié dans les opérations.
+
 ## 4 sexies. Objectifs d'épargne
 - Un objectif = un montant visé, une date facultative, et un suivi : **le solde d'un compte** (dernier relevé, ou valeur actuelle d'une enveloppe) ou **un montant saisi**. Effort mensuel prévu facultatif.
 - Calculs en centimes entiers : effort nécessaire = reste ÷ mois entiers restants (arrondi au centime supérieur) ; mois d'atteinte = mois courant + reste ÷ effort prévu (arrondi au mois supérieur). Aucun rendement supposé.
@@ -151,6 +157,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
+- 23/10/2026 — Version 0.10.0. Crédits (#8) : tableau d'amortissement, capital restant dû déduit du patrimoine (aussi en fin de mois), détail intérêts / capital de la prochaine échéance, échéances retrouvées dans les opérations. Migration V11.
 - 23/10/2026 — Version 0.9.0. Bilan de l'année (#7) : comparaison à la même période de l'année précédente, hausses et baisses, mois par mois, export PDF généré localement.
 - 23/10/2026 — Version 0.8.0. Objectifs d'épargne (#6) : suivi par un compte ou à la main, effort mensuel nécessaire, date d'atteinte estimée ; taux d'épargne moyen sur la période de l'historique. Migration V10.
 - 23/10/2026 — Version 0.7.0. Repères fiscaux (#5, premier volet) : 5 ans du PEA et 8 ans de l'assurance vie d'après la date d'ouverture saisie, plafonds PEA, Livret A et LDDS, prochain déblocage du PEE. Migration V9 (`account.opened_on`).

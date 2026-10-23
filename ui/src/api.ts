@@ -289,8 +289,52 @@ export type NetWorth = {
   cashAccounts: { accountId: number; type: AccountType; name: string; balanceCents: number; balanceDate: string }[];
   envelopes: Envelope[];
   history: { date: string; totalCents: number; estimated: boolean }[];
-  monthly: { month: string; date: string; liquidCents: number; investedCents: number; totalCents: number; estimated: boolean }[];
+  monthly: {
+    month: string;
+    date: string;
+    liquidCents: number;
+    investedCents: number;
+    totalCents: number;
+    estimated: boolean;
+    debtCents: number;
+    netCents: number;
+  }[];
   allocation: { assetClass: AssetClass; valueCents: number }[];
+  debtCents: number;
+  netCents: number;
+};
+
+export type Installment = { number: number; date: string; paymentCents: number; interestCents: number; principalCents: number; remainingCents: number };
+
+export type Loan = {
+  id: number;
+  name: string;
+  lender: string | null;
+  principalCents: number;
+  annualRate: string;
+  firstPaymentDate: string;
+  termMonths: number;
+  endDate: string;
+  insuranceMonthlyCents: number | null;
+  paymentLabel: string | null;
+  paymentCents: number;
+  totalInterestCents: number;
+  paidInstallments: number;
+  remainingCents: number;
+  interestPaidCents: number;
+  next: Installment | null;
+  matched: { count: number; lastDate: string | null } | null;
+};
+
+export type LoanRequest = {
+  name: string;
+  lender?: string | null;
+  principalCents: number;
+  annualRate: string;
+  firstPaymentDate: string;
+  termMonths: number;
+  insuranceMonthlyCents?: number | null;
+  paymentLabel?: string | null;
 };
 
 export type Milestone = {
@@ -488,6 +532,11 @@ export const api = {
 
   accounts: () => request<Account[]>("/api/accounts"),
   goals: () => request<Goal[]>("/api/goals"),
+  loans: () => request<Loan[]>("/api/loans"),
+  loanSchedule: (id: number) => request<Installment[]>(`/api/loans/${id}/schedule`),
+  createLoan: (body: LoanRequest) => request<{ id: number }>("/api/loans", json(body)),
+  updateLoan: (id: number, body: LoanRequest) => request<void>(`/api/loans/${id}`, { ...json(body), method: "PUT" }),
+  deleteLoan: (id: number) => request<void>(`/api/loans/${id}`, { method: "DELETE" }),
   annual: (year: number) => request<AnnualReview>(`/api/summary/year?year=${year}`),
   annualPdfUrl: (year: number) => `/api/summary/year/report.pdf?year=${year}`,
   createGoal: (body: GoalRequest) => request<{ id: number }>("/api/goals", json(body)),

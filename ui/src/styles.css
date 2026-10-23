@@ -1794,3 +1794,24 @@ select {
   justify-content: space-between;
   gap: 12px;
 }
+
+/* Crédits */
+.loans {
+  display: grid;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.loans ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.loan-schedule {
+  max-height: 360px;
+  overflow-y: auto;
+}
