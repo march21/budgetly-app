@@ -133,6 +133,7 @@ Règles françaises, codées dans `milestones/FiscalRules.kt`, **vérifiées le 
 - Métadonnées tracées nettoyées avant compilation : l'agent enregistre les fichiers temporaires des tests comme ressources, ce qui casse la compilation sous Windows (motif invalide).
 
 ## 7. Exigences du futur mode LAN
+**Écarté pour le moment (23/10/2026).** Le cœur n'écoute que sur 127.0.0.1. Les exigences ci-dessous restent la base si l'idée revient.
 - Authentification obligatoire dès qu'on écoute hors localhost.
 - HTTPS avec certificat local (mkcert ou CA perso).
 - **Jamais exposé sur Internet** ; accès distant uniquement via VPN (WireGuard / Tailscale).
@@ -165,9 +166,10 @@ Suivie dans les issues GitHub, par ordre de priorité :
 4. Objectifs d'épargne et taux d'épargne (#6).
 5. Bilan annuel et comparaisons (#7).
 6. Suivi des crédits (#8).
-7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
+7. ~~Mode réseau local, foyer et consultation mobile (#9)~~ : écarté pour le moment (voir §7).
 
 ## 10. Journal des changements
+- 23/10/2026 — Mode réseau local (#9) écarté pour le moment : écoute hors de localhost, autorité de certification à installer sur le téléphone, et à terme données hors du desktop (Raspberry Pi) ou accès distant, autant d'écarts au contrat de vie privée d'origine.
 - 23/10/2026 — Version 0.11.0. Aide à la déclaration (#5, second volet) : intérêts exonérés ou imposables, dons (66 % et 75 %), emploi à domicile, garde d'enfants, versements PER et impôts payés, avec avantage estimé. Migration V12 (catégories fiscales).
 - 23/10/2026 — Version 0.10.0. Crédits (#8) : tableau d'amortissement, capital restant dû déduit du patrimoine (aussi en fin de mois), détail intérêts / capital de la prochaine échéance, échéances retrouvées dans les opérations. Migration V11.
 - 23/10/2026 — Version 0.9.0. Bilan de l'année (#7) : comparaison à la même période de l'année précédente, hausses et baisses, mois par mois, export PDF généré localement.
