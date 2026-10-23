@@ -158,6 +158,21 @@ export type SummaryHistory = {
   averageSavingsRate: number | null;
 };
 
+export type AnnualLine = { categoryId: number | null; name: string; cents: number; previousCents: number; deltaCents: number };
+export type AnnualTotals = { incomeCents: number; expenseCents: number; savingsCents: number; savingsRate: number | null };
+export type AnnualReview = {
+  year: number;
+  through: string;
+  current: AnnualTotals;
+  previous: AnnualTotals;
+  expenses: AnnualLine[];
+  income: AnnualLine[];
+  increases: AnnualLine[];
+  decreases: AnnualLine[];
+  months: { month: string; incomeCents: number; expenseCents: number; previousIncomeCents: number; previousExpenseCents: number }[];
+  monthsWithData: number;
+};
+
 export type Goal = {
   id: number;
   name: string;
@@ -473,6 +488,8 @@ export const api = {
 
   accounts: () => request<Account[]>("/api/accounts"),
   goals: () => request<Goal[]>("/api/goals"),
+  annual: (year: number) => request<AnnualReview>(`/api/summary/year?year=${year}`),
+  annualPdfUrl: (year: number) => `/api/summary/year/report.pdf?year=${year}`,
   createGoal: (body: GoalRequest) => request<{ id: number }>("/api/goals", json(body)),
   updateGoal: (id: number, body: GoalRequest) => request<void>(`/api/goals/${id}`, { ...json(body), method: "PUT" }),
   deleteGoal: (id: number) => request<void>(`/api/goals/${id}`, { method: "DELETE" }),

@@ -72,6 +72,10 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - **PEE Natixis** (avis d'opération d'épargne salariale, envoyé à chaque versement) : seule la page « Situation de vos avoirs » est lue (placements par date de disponibilité, valeur de part, parts, montant, total). Contrôle : somme des lignes = total = somme par date de disponibilité. Les FCPE n'ont pas d'ISIN sur l'avis : identifiés par leur nom, valeur au relevé (ou saisie manuelle), pas de cours automatique. Pas de cumul des versements sur ce document. Identifiant de l'enveloppe : numéro d'entreprise (un PEE par employeur). Répartition disponible / bloqué conservée à chaque relevé.
 - `account.iban` sert d'identifiant de compte : IBAN, ou numéro de contrat pour une enveloppe.
 
+## 4 septies. Bilan annuel
+- Année comparée à la **même période** de l'année précédente : pour l'année en cours, de janvier au mois courant, pour comparer autant de mois. Totaux (revenus, dépenses, épargne versée, taux d'épargne), catégories principales, cinq plus fortes hausses et baisses de dépenses, détail mois par mois.
+- **PDF généré sur la machine** par PDFBox (polices standard, aucun fichier écrit sur disque : il part directement dans la réponse). Montants formatés en entiers avec espace insécable ; un caractère hors de l'encodage des polices standard (nom de catégorie libre) est remplacé par « ? ». Le PDF n'est pas chiffré : l'interface le rappelle.
+
 ## 4 sexies. Objectifs d'épargne
 - Un objectif = un montant visé, une date facultative, et un suivi : **le solde d'un compte** (dernier relevé, ou valeur actuelle d'une enveloppe) ou **un montant saisi**. Effort mensuel prévu facultatif.
 - Calculs en centimes entiers : effort nécessaire = reste ÷ mois entiers restants (arrondi au centime supérieur) ; mois d'atteinte = mois courant + reste ÷ effort prévu (arrondi au mois supérieur). Aucun rendement supposé.
@@ -146,6 +150,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
+- 23/10/2026 — Version 0.9.0. Bilan de l'année (#7) : comparaison à la même période de l'année précédente, hausses et baisses, mois par mois, export PDF généré localement.
 - 23/10/2026 — Version 0.8.0. Objectifs d'épargne (#6) : suivi par un compte ou à la main, effort mensuel nécessaire, date d'atteinte estimée ; taux d'épargne moyen sur la période de l'historique. Migration V10.
 - 23/10/2026 — Version 0.7.0. Repères fiscaux (#5, premier volet) : 5 ans du PEA et 8 ans de l'assurance vie d'après la date d'ouverture saisie, plafonds PEA, Livret A et LDDS, prochain déblocage du PEE. Migration V9 (`account.opened_on`).
 - 23/10/2026 — Version 0.6.0. Patrimoine : fins de mois, rendement des enveloppes (TRI, versements déduits) et répartition par classe d'actifs (#4).
