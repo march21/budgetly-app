@@ -3,6 +3,10 @@ package dev.budgetly.core.milestones
 import dev.budgetly.core.imports.ApiException
 import dev.budgetly.core.portfolio.PortfolioService
 import dev.budgetly.core.statement.AccountType
+import org.springframework.aot.hint.MemberCategory
+import org.springframework.aot.hint.RuntimeHints
+import org.springframework.aot.hint.RuntimeHintsRegistrar
+import org.springframework.context.annotation.ImportRuntimeHints
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Service
@@ -59,8 +63,17 @@ data class MilestoneReport(val milestones: List<Milestone>, val rules: FiscalRef
 
 data class OpeningDate(val date: LocalDate?)
 
+/** Tableau d'éléments créé par réflexion à la sérialisation (manque constaté en natif sur Milestone[]). */
+class MilestoneRuntimeHints : RuntimeHintsRegistrar {
+    override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
+        hints.reflection().registerType(java.lang.reflect.Array.newInstance(Milestone::class.java, 0).javaClass, MemberCategory.UNSAFE_ALLOCATED)
+        hints.reflection().registerType(Milestone::class.java, MemberCategory.INVOKE_PUBLIC_METHODS, MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS, MemberCategory.DECLARED_FIELDS)
+    }
+}
+
 /** Échéances fiscales des enveloppes et plafonds des livrets, d'après les comptes suivis et leurs relevés. */
 @Service
+@ImportRuntimeHints(MilestoneRuntimeHints::class)
 class MilestoneService(private val jdbc: JdbcClient, private val portfolio: PortfolioService, private val clock: Clock) {
 
     private data class Account(val id: Long, val name: String, val type: AccountType, val openedOn: LocalDate?)
