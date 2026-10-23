@@ -1,6 +1,6 @@
 name: Paquets desktop
 
-# Installeurs Windows (NSIS) et Linux (deb). Chaque OS trace ses propres métadonnées natives
+# Installeurs Windows (NSIS), Linux (deb) et macOS Apple Silicon (dmg, + .app.tar.gz pour la mise à jour). Chaque OS trace ses propres métadonnées natives
 # (bibliothèque SQLite et JNI AWT propres à la plateforme) avant de compiler l'image.
 # Lancement manuel (Actions → « Run workflow »), PR étiquetée « paquets » (ou « metadonnees-natives » pour
 # réexporter les traces Windows), ou tag v* poussé : publication. La clé de signature des mises à jour n'est
@@ -12,7 +12,7 @@ on:
       platforms:
         description: "Plateformes"
         type: choice
-        options: [windows, linux, both]
+        options: [windows, linux, macos, all]
         default: windows
       jvm_tests:
         description: "Retracer sous l'agent (tests JVM + contrôle de dérive des métadonnées), ~8 min de plus"
@@ -44,10 +44,11 @@ jobs:
       matrix:
         # Lancement manuel : seulement la ou les plateformes demandées (tag et PR : les deux). L'exclusion ne
         # s'applique qu'à une clé de la matrice de base, d'où « name » listé ici et complété par « include ».
-        name: [Windows, Linux]
+        name: [Windows, Linux, macOS]
         exclude:
-          - name: ${{ inputs.platforms == 'windows' && 'Linux' || 'aucune' }}
-          - name: ${{ inputs.platforms == 'linux' && 'Windows' || 'aucune' }}
+          - name: ${{ (inputs.platforms == 'windows' || inputs.platforms == 'macos') && 'Linux' || 'aucune' }}
+          - name: ${{ (inputs.platforms == 'linux' || inputs.platforms == 'macos') && 'Windows' || 'aucune' }}
+          - name: ${{ (inputs.platforms == 'windows' || inputs.platforms == 'linux') && 'macOS' || 'aucune' }}
         include:
           - name: Windows
             os: windows-latest
@@ -61,6 +62,13 @@ jobs:
             triple: x86_64-unknown-linux-gnu
             exe: ""
             libs: "*.so"
+            python: python3
+            graalvm: graalvm-community
+          - name: macOS
+            os: macos-14
+            triple: aarch64-apple-darwin
+            exe: ""
+            libs: "*.dylib"
             python: python3
             graalvm: graalvm-community
     defaults:
@@ -176,6 +184,14 @@ jobs:
           text = "\n".join(log.read_text(errors="replace").splitlines()[-50:]) if log.exists() else "tauri.log absent"
           print("::error title=tauri.log::" + text[:6000].replace("%", "%25").replace("\n", "%0A"))
           EOF
+      # macOS : l'updater attend l'application compressée (.app.tar.gz), nommée avec sa version.
+      - name: Archive de mise à jour (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          version=$(python3 -c "import json; print(json.load(open('desktop/src-tauri/tauri.conf.json'))['version'])")
+          cd desktop/src-tauri/target/release/bundle/macos
+          tar -czf "Budgetly_${version}_aarch64.app.tar.gz" Budgetly.app
+          ls -la
       - name: Installation silencieuse et cœur installé (Windows)
         if: runner.os == 'Windows'
         run: |
@@ -187,13 +203,15 @@ jobs:
       - name: Contenu des paquets
         run: |
           cd desktop/src-tauri/target/release/bundle
-          echo "::notice title=Paquets ${{ matrix.name }}::$(find . -maxdepth 2 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.AppImage' \) -printf '%p (%k Ko) ' 2>/dev/null || find . -maxdepth 2 -type f)"
+          echo "::notice title=Paquets ${{ matrix.name }}::$(find . -maxdepth 2 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.dmg' -o -name '*.tar.gz' \) -printf '%p (%k Ko) ' 2>/dev/null || find . -maxdepth 2 -type f)"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: budgetly-${{ matrix.name }}
           path: |
             desktop/src-tauri/target/release/bundle/nsis/*.exe
             desktop/src-tauri/target/release/bundle/deb/*.deb
+            desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            desktop/src-tauri/target/release/bundle/macos/*.app.tar.gz
           retention-days: 14
 
   # Tag v* poussé : signature des installeurs (latest.json exige une signature par plateforme ; le .deb reste
@@ -225,7 +243,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           shopt -s nullglob
-          files=(paquets/*-setup.exe paquets/*.deb)
+          files=(paquets/*-setup.exe paquets/*.deb paquets/*.app.tar.gz)
           [ ${#files[@]} -gt 0 ] || { echo "::error::Aucun installeur à signer"; exit 1; }
           for f in "${files[@]}"; do
             (cd desktop && npx --no-install tauri signer sign "../$f" > /dev/null)
@@ -265,7 +283,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          files=$(find paquets -maxdepth 1 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.sig' -o -name latest.json \))
+          files=$(find paquets -maxdepth 1 -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.sig' -o -name latest.json \))
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" $files --clobber
           else

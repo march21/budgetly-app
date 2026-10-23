@@ -9,7 +9,7 @@ import pathlib
 import sys
 
 folder, repo, tag = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-targets = {"windows-x86_64": "*-setup.exe", "linux-x86_64": "*.deb"}
+targets = {"windows-x86_64": "*-setup.exe", "linux-x86_64": "*.deb", "darwin-aarch64": "*.app.tar.gz"}
 platforms = {}
 for key, pattern in targets.items():
     found = sorted(folder.glob(pattern))

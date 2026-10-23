@@ -99,7 +99,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 - Desktop : **Tauri 2**.
 - Règle : **build natif GraalVM dans la CI dès la phase 0**, avec tests de parsing PDF, de chiffrement et d'API exécutés en natif. Dev quotidien en JVM classique.
 - **Coût de la CI** (dépôt public, minutes gratuites) : JVM, UI et natif tournent sur chaque PR et sur `main`. Les paquets ne sont jamais construits automatiquement sur une PR (étiquette `paquets`) ; lancement manuel limité à Windows par défaut, sans retraçage JVM sauf demande. Un merge dont le titre contient `[skip ci]` ne relance rien.
-- **Paquets** (workflow « Paquets desktop », manuel ou tag `v*`) : installeur Windows NSIS par utilisateur (sans droits administrateur), paquet `.deb` pour Linux. Chaque OS trace ses propres métadonnées natives (bibliothèque SQLite et JNI AWT propres à la plateforme) puis compile son image. AppImage écartée pour l’instant (linuxdeploy échoue en CI, cause non investiguée) ; macOS hors périmètre tant qu'aucun Mac n'est en jeu.
+- **Paquets** (workflow « Paquets desktop », manuel ou tag `v*`) : installeur Windows NSIS par utilisateur (sans droits administrateur), paquet `.deb` pour Linux. Chaque OS trace ses propres métadonnées natives (bibliothèque SQLite et JNI AWT propres à la plateforme) puis compile son image. AppImage écartée pour l’instant (linuxdeploy échoue en CI, cause non investiguée) ; paquet macOS Apple Silicon (`.dmg`, et `.app.tar.gz` pour la mise à jour), non signé par Apple.
 - Bibliothèques JDK de l'image native (`libawt`…, `awt.dll`…, chargées par PDFBox) livrées dans `lib/` à côté des ressources de l'application. Mesuré en CI : Linux les trouve via `-Djava.library.path` ou `LD_LIBRARY_PATH`, Windows uniquement via `PATH` (ou à côté de l'exécutable) ; sans indication, l'extraction PDF échoue. La coque passe les deux.
 - **Métadonnées natives versionnées** (`META-INF/native-image/dev.budgetly/core`) : union des traces de l'agent sous Linux et sous Windows, triée pour des diffs lisibles. Les images natives partent de ce jeu (plus de dépendance au job JVM) ; chaque CI retrace sous l'agent et signale en avertissement ce qui manquerait. Régénération : étiquette `metadonnees-natives` sur une PR (export des traces en commentaire), puis `native_metadata.py merge`.
 - Embarqués en plus : profils de couleur AWT (`sun/java2d/cmm/profiles/*.pf`) et tous les jeux de caractères (`-H:+AddAllCharsets`), manques révélés en natif par un test de PDF à police TrueType intégrée et couleur ICC.
@@ -113,7 +113,7 @@ _Dernière mise à jour : 20/10/2026. Ce document fait référence : toute évol
 ## 8. Dette provisoire assumée
 - Port fixe 47811.
 - Icônes provisoires.
-- Installeurs non signés par un certificat de code : Windows SmartScreen avertira au premier lancement (les mises à jour, elles, sont signées par la clé de l'application).
+- Installeurs non signés par un certificat de code : Windows SmartScreen avertira au premier lancement, macOS exige « Ouvrir quand même » (les mises à jour, elles, sont signées par la clé de l'application).
 - Téléchargements (sauvegarde, CSV) depuis la fenêtre desktop : natifs sous Windows (WebView2), non vérifiés sous Linux (WebKitGTK) ; les sauvegardes restent de toute façon dans le dossier de données affiché.
 
 ## 9. Questions ouvertes
@@ -130,6 +130,7 @@ Suivie dans les issues GitHub, par ordre de priorité :
 7. Plus tard : mode réseau local, foyer et consultation mobile (#9).
 
 ## 10. Journal des changements
+- 23/10/2026 — Paquet macOS Apple Silicon (dmg, mise à jour automatique par `.app.tar.gz` signé). Non signé par Apple (Developer ID 99 $/an) : premier lancement par « Ouvrir quand même ». Signature des installeurs à l'étude (Windows : SignPath Foundation gratuit pour l'open source, ou Certum Open Source ; Microsoft Artifact Signing fermé aux particuliers hors États-Unis et Canada).
 - 23/10/2026 — Version 0.6.0. Patrimoine : fins de mois, rendement des enveloppes (TRI, versements déduits) et répartition par classe d'actifs (#4).
 - 23/10/2026 — Version 0.5.0. Import des exports CSV et OFX (#3) : correspondance des colonnes, soldes de contrôle obligatoires, doublons par date et montant face aux relevés PDF.
 - 22/10/2026 — Feuille de route publiée en issues (#3 à #9).

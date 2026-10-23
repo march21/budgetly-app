@@ -14,6 +14,7 @@ PY=$(command -v python3 || command -v python)
 
 exe=budgetly-core; libglob='*.so'; envvar=LD_LIBRARY_PATH
 if [ -f "$src/budgetly-core.exe" ]; then exe=budgetly-core.exe; libglob='*.dll'; envvar=PATH; fi
+if ls "$src"/*.dylib >/dev/null 2>&1; then libglob='*.dylib'; envvar=DYLD_LIBRARY_PATH; fi
 
 port=47900
 run_variant() { # nom, dossier, args...

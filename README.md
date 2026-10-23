@@ -22,7 +22,11 @@ Pour une banque sans connecteur, l'export CSV ou OFX suffit ; un connecteur PDF 
 
 ## Installation
 
-Installeurs Windows (sans droits administrateur) et Debian/Ubuntu : page **Releases** du dépôt. Une nouvelle
+Installeurs Windows (sans droits administrateur), Debian/Ubuntu et macOS (Apple Silicon) : page **Releases** du dépôt.
+
+> **macOS** : l'application n'est pas encore signée par un compte Apple Developer. Au premier lancement, macOS la
+> bloque : ouvrez **Réglages système → Confidentialité et sécurité**, cliquez sur **Ouvrir quand même**, puis
+> confirmez. Les mises à jour suivantes s'installent ensuite depuis l'application. Une nouvelle
 version s'installe par-dessus l'ancienne ; les données restent dans le dossier de l'application. À partir de la
 0.4.0, l'application propose elle-même les nouvelles versions au lancement (désactivable dans Réglages).
 

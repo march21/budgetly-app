@@ -22,7 +22,9 @@ const RELEASES_URL: &str = "https://github.com/march21/budgetly-app/releases/lat
 
 #[cfg(windows)]
 const LIBRARY_ENV: &str = "PATH";
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+const LIBRARY_ENV: &str = "DYLD_LIBRARY_PATH";
+#[cfg(not(any(windows, target_os = "macos")))]
 const LIBRARY_ENV: &str = "LD_LIBRARY_PATH";
 
 struct CoreProcess(Mutex<Option<CommandChild>>);
@@ -138,7 +140,8 @@ fn check_for_update(app: &AppHandle) {
         }
     };
 
-    let installable = cfg!(windows);
+    // Windows (NSIS) et macOS (.app) s'installent par l'updater ; le paquet .deb reste installé à la main.
+    let installable = cfg!(windows) || cfg!(target_os = "macos");
     let text = if installable {
         format!(
             "Budgetly {} est disponible (version installée : {}).\n\n\
