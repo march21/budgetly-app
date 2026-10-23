@@ -38,6 +38,8 @@ data class SummaryHistory(
     val averageIncomeCents: Long,
     val averageExpenseCents: Long,
     val averageSavingsCents: Long,
+    /** (Revenus − dépenses) / revenus sur les mois renseignés ; null sans revenus. */
+    val averageSavingsRate: Double? = null,
 )
 
 /**
@@ -96,7 +98,9 @@ class MonthlySummary(private val jdbc: JdbcClient) {
         }
         val withData = points.filter { it.incomeCents != 0L || it.expenseCents != 0L || it.savingsCents != 0L }
         fun avg(selector: (MonthPoint) -> Long) = if (withData.isEmpty()) 0L else withData.sumOf(selector) / withData.size
-        return SummaryHistory(points, avg { it.incomeCents }, avg { it.expenseCents }, avg { it.savingsCents })
+        val income = withData.sumOf { it.incomeCents }
+        val rate = if (income > 0) (income - withData.sumOf { it.expenseCents }).toDouble() / income else null
+        return SummaryHistory(points, avg { it.incomeCents }, avg { it.expenseCents }, avg { it.savingsCents }, rate)
     }
 
     /** Regroupe par catégorie principale, avec le détail des sous-catégories ; budget = somme des budgets du groupe. */

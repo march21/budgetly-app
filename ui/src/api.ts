@@ -155,6 +155,32 @@ export type SummaryHistory = {
   averageIncomeCents: number;
   averageExpenseCents: number;
   averageSavingsCents: number;
+  averageSavingsRate: number | null;
+};
+
+export type Goal = {
+  id: number;
+  name: string;
+  targetCents: number;
+  targetDate: string | null;
+  accountId: number | null;
+  accountName: string | null;
+  source: "ACCOUNT" | "MANUAL";
+  currentCents: number;
+  monthlyCents: number | null;
+  reached: boolean;
+  monthsLeft: number | null;
+  requiredMonthlyCents: number | null;
+  projectedMonth: string | null;
+};
+
+export type GoalRequest = {
+  name: string;
+  targetCents: number;
+  targetDate?: string | null;
+  accountId?: number | null;
+  savedCents?: number | null;
+  monthlyCents?: number | null;
 };
 
 export type AccountPreview = {
@@ -446,6 +472,10 @@ export const api = {
   csvUrl: "/api/transactions/export.csv",
 
   accounts: () => request<Account[]>("/api/accounts"),
+  goals: () => request<Goal[]>("/api/goals"),
+  createGoal: (body: GoalRequest) => request<{ id: number }>("/api/goals", json(body)),
+  updateGoal: (id: number, body: GoalRequest) => request<void>(`/api/goals/${id}`, { ...json(body), method: "PUT" }),
+  deleteGoal: (id: number) => request<void>(`/api/goals/${id}`, { method: "DELETE" }),
   milestones: () => request<MilestoneReport>("/api/milestones"),
   setOpenedOn: (accountId: number, date: string | null) =>
     request<void>(`/api/accounts/${accountId}/opened-on`, { ...json({ date }), method: "PUT" }),

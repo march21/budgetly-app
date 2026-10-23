@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Account, type CategoryLine, type MonthProjection, type MonthSummary, type RecurringOverview, type SummaryHistory } from "./api";
 import { Amount } from "./Amount";
+import { GoalsPanel } from "./Goals";
 import { amount, currentMonth, longDate, monthAbbrev, monthLabel, percent, shiftMonth, shortDate } from "./format";
 
 type Props = {
@@ -112,6 +113,7 @@ export function DashboardPage({ accounts, onImport, onShowRecurring, month, onMo
       )}
 
       {history && <HistoryChart history={history} selected={month} onSelect={onMonthChange} />}
+      <GoalsPanel accounts={accounts} />
     </section>
   );
 }
@@ -246,7 +248,8 @@ function HistoryChart({
           </svg>
           <p className="muted history-averages">
             Moyenne des mois renseignés : revenus {amount(history.averageIncomeCents)}, dépenses{" "}
-            {amount(history.averageExpenseCents)}, épargne versée {amount(history.averageSavingsCents)}.
+            {amount(history.averageExpenseCents)}, épargne versée {amount(history.averageSavingsCents)}
+            {history.averageSavingsRate !== null && <>, taux d'épargne {percent(history.averageSavingsRate)}</>}.
           </p>
         </>
       ) : (

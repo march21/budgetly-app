@@ -75,7 +75,10 @@ class ImportJournal(
                     "(select count(*) from valuation where account_id = :id) + " +
                     "(select count(*) from position_snapshot where account_id = :id)",
             ).param("id", accountId).query(Long::class.java).single()
-            if (remaining == 0L) jdbc.sql("delete from account where id = ?").param(accountId).update()
+            if (remaining == 0L) {
+                jdbc.sql("update savings_goal set account_id = null where account_id = ?").param(accountId).update()
+                jdbc.sql("delete from account where id = ?").param(accountId).update()
+            }
         }
         jdbc.sql("update statement_import set cancelled_at = ?, file_sha256 = file_sha256 || ':annule:' || id where id = ?")
             .params(clock.instant().toString(), importId).update()
