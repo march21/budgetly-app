@@ -17,7 +17,7 @@ class HealthController(private val jdbc: JdbcClient, private val vault: VaultSer
     fun health(): HealthResponse {
         val state = vault.state
         val schema = if (state == VaultState.UNLOCKED) {
-            jdbc.sql("select max(version) from flyway_schema_history where success = 1")
+            jdbc.sql("select version from flyway_schema_history where success = 1 and version is not null order by cast(version as integer) desc limit 1")
                 .query(String::class.java)
                 .optional()
                 .orElse(null)
