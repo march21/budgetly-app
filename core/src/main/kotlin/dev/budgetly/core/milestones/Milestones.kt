@@ -109,8 +109,8 @@ class MilestoneService(private val jdbc: JdbcClient, private val portfolio: Port
     fun setOpeningDate(accountId: Long, request: OpeningDate) {
         val type = jdbc.sql("select type from account where id = ?").param(accountId).query(String::class.java).optional()
             .orElseThrow { ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Compte introuvable.") }
-        if (AccountType.valueOf(type) !in setOf(AccountType.PEA, AccountType.LIFE_INSURANCE, AccountType.PEE)) {
-            throw ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "La date d'ouverture ne concerne que les enveloppes d'investissement.")
+        if (AccountType.valueOf(type) !in setOf(AccountType.PEA, AccountType.LIFE_INSURANCE)) {
+            throw ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "La date d'ouverture ne concerne que le PEA et l'assurance vie.")
         }
         if (request.date != null && request.date.isAfter(LocalDate.now(clock))) {
             throw ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "La date d'ouverture ne peut pas être dans le futur.")
@@ -127,7 +127,7 @@ class MilestoneService(private val jdbc: JdbcClient, private val portfolio: Port
     private fun ceiling(a: Account, kind: MilestoneKind, amount: Long, limit: Long): Milestone {
         val status = when {
             amount >= limit -> MilestoneStatus.REACHED
-            amount >= limit * FiscalRules.NEAR_CEILING_RATIO -> MilestoneStatus.SOON
+            amount * 1_000 >= limit * FiscalRules.NEAR_CEILING_PER_MILLE -> MilestoneStatus.SOON
             else -> MilestoneStatus.UPCOMING
         }
         return Milestone(a.id, a.name, a.type, kind, status, amountCents = amount, limitCents = limit)

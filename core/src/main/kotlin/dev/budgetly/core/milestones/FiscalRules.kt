@@ -7,7 +7,7 @@ import java.time.LocalDate
  * `docs/decisions.md` (section « Repères fiscaux ») : à revoir à chaque loi de finances.
  */
 object FiscalRules {
-    /** Vérifiées le 23/10/2026 (service-public.fr, fiches F2385 et F2329). */
+    /** Vérifiées le 23/10/2026 (service-public.fr F2385, F2329, F2365, F2368 ; assurance vie : Linxea). */
     val VERIFIED_ON: LocalDate = LocalDate.of(2026, 10, 23)
 
     /** PEA : retraits partiels sans clôture et gains exonérés d'impôt sur le revenu après 5 ans. */
@@ -29,5 +29,5 @@ object FiscalRules {
 
     /** Un repère « bientôt » : échéance à moins de 6 mois, plafond à 90 % ou plus. */
     const val SOON_MONTHS = 6L
-    const val NEAR_CEILING_RATIO = 0.9
+    const val NEAR_CEILING_PER_MILLE = 900L
 }

@@ -5,6 +5,12 @@ import { amount, longDate } from "./format";
 const pct = new Intl.NumberFormat("fr-FR", { style: "percent", maximumFractionDigits: 1 });
 const pctWhole = new Intl.NumberFormat("fr-FR", { style: "percent", maximumFractionDigits: 0 });
 
+/** Date du jour à l'heure locale (toISOString est en UTC). */
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function monthsUntil(iso: string): number {
   const now = new Date();
   const d = new Date(`${iso}T12:00:00`);
@@ -30,15 +36,15 @@ function text(m: Milestone, rules: MilestoneReport["rules"]): string {
     case "PEA_MATURITY":
       if (!m.date) return "Date d'ouverture inconnue : saisissez-la pour connaître la date de ses 5 ans.";
       return m.status === "REACHED"
-        ? `5 ans depuis le ${longDate(m.date)} : retraits partiels possibles sans clôturer le plan, gains retirés exonérés d'impôt sur le revenu (prélèvements sociaux : ${pct.format(rules.socialLeviesGeneral)}).`
+        ? `5 ans depuis le ${longDate(m.date)} : retraits partiels possibles sans clôturer le plan, gains retirés exonérés d'impôt sur le revenu, prélèvements sociaux dus (${pct.format(rules.socialLeviesGeneral)} en 2026).`
         : `5 ans le ${longDate(m.date)}, ${until(m.date)}. D'ici là, un retrait clôture le plan, sauf exceptions (licenciement, invalidité, création d'entreprise…).`;
     case "LIFE_INSURANCE_MATURITY":
       if (!m.date) return "Date d'ouverture inconnue : saisissez-la pour connaître la date de ses 8 ans.";
       return m.status === "REACHED"
-        ? `8 ans depuis le ${longDate(m.date)} : chaque année, ${amount(rules.lifeInsuranceAllowanceSingleCents)} de gains retirés sans impôt sur le revenu (${amount(rules.lifeInsuranceAllowanceCoupleCents)} pour un couple), prélèvements sociaux de ${pct.format(rules.socialLeviesLifeInsurance)} dus.`
-        : `8 ans le ${longDate(m.date)}, ${until(m.date)}. Ensuite, abattement annuel de ${amount(rules.lifeInsuranceAllowanceSingleCents)} sur les gains retirés (${amount(rules.lifeInsuranceAllowanceCoupleCents)} pour un couple).`;
+        ? `8 ans depuis le ${longDate(m.date)} : les gains retirés bénéficient de l'abattement annuel de l'assurance vie, puis sont imposés à 7,5 % (12,8 % sur la part des versements au-delà de 150 000 €) ; prélèvements sociaux de ${pct.format(rules.socialLeviesLifeInsurance)} dus.`
+        : `8 ans le ${longDate(m.date)}, ${until(m.date)}. Ensuite, les gains retirés bénéficient de l'abattement annuel de l'assurance vie.`;
     case "PEE_RELEASE":
-      return `${amount(m.amountCents ?? 0)} débloqués le ${longDate(m.date!)}, ${until(m.date!)}.`;
+      return `${amount(m.amountCents ?? 0)} (valeur au dernier relevé) disponibles à partir du ${longDate(m.date!)}, ${until(m.date!)}.`;
     case "PEA_CEILING":
       return m.status === "REACHED"
         ? `Plafond des versements atteint (${amount(m.limitCents ?? 0)}) : plus de nouveaux versements possibles.`
@@ -76,8 +82,10 @@ export function MilestonesPanel({ refreshKey }: { refreshKey?: number }) {
         ))}
       </ul>
       <p className="muted">
-        Règles vérifiées le {longDate(report.rules.verifiedOn)} (service-public.fr). Repères indicatifs, sans valeur de
-        conseil fiscal ; les plafonds des livrets portent sur les versements, pas sur les intérêts.
+        {report.milestones.some((m) => m.kind === "LIFE_INSURANCE_MATURITY") &&
+          `Abattement de l'assurance vie après 8 ans : ${amount(report.rules.lifeInsuranceAllowanceSingleCents)} par an (${amount(report.rules.lifeInsuranceAllowanceCoupleCents)} pour un couple), pour l'ensemble de vos contrats et non par contrat. `}
+        Règles vérifiées le {longDate(report.rules.verifiedOn)} (service-public.fr ; assurance vie : courtier Linxea). Repères
+        indicatifs, sans valeur de conseil fiscal ; les plafonds des livrets portent sur les versements, pas sur les intérêts.
       </p>
     </section>
   );
@@ -112,7 +120,7 @@ function OpeningDateForm({ milestone, onSaved }: { milestone: Milestone; onSaved
       <label className="inline-form-label" htmlFor={`opened-${milestone.accountId}`}>
         Date d'ouverture (premier versement)
       </label>
-      <input id={`opened-${milestone.accountId}`} type="date" value={date} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} />
+      <input id={`opened-${milestone.accountId}`} type="date" value={date} max={localToday()} onChange={(e) => setDate(e.target.value)} />
       <button type="submit" className="secondary" disabled={!date}>
         Enregistrer
       </button>
