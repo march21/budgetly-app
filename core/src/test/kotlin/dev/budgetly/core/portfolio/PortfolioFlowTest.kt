@@ -128,6 +128,8 @@ class PortfolioFlowTest(
         val life = worth["envelopes"].single { it["type"].asText() == "LIFE_INSURANCE" }
         assertEquals(EasyBourseFixtures.avTotal, life["valueCents"].asLong())
         assertEquals(194_500, life["contributionsCents"].asLong())
+        // Un seul relevé, valeur à sa date : rendement incalculable, champ présent (sérialisé, natif compris).
+        assertTrue(life.has("performance") && life["performance"].isNull)
         assertEquals(300_000 + EasyBourseFixtures.avTotal, worth["investedCents"].asLong())
         assertTrue(worth["history"].size() >= 2)
 

@@ -69,7 +69,8 @@ object Performance {
 
     /**
      * Taux annuel r tel que la somme des flux actualisés soit nulle (négatif = argent investi, positif = valeur
-     * récupérée). Bissection : robuste, une solution unique pour ce profil de flux.
+     * récupérée). Bissection : robuste, une solution unique pour ce profil de flux. Les centimes passent en Double
+     * seulement pour l'actualisation ; aucun montant n'est recalculé à partir de ce taux.
      */
     fun irr(flows: List<Pair<LocalDate, Long>>): Double? {
         if (flows.none { it.second < 0 } || flows.none { it.second > 0 }) return null

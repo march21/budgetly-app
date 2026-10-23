@@ -60,7 +60,7 @@ data class MonthlyNetWorth(val month: String, val date: LocalDate, val liquidCen
 }
 
 /** Classes d'actifs, du plus disponible au plus risqué. */
-enum class AssetClass { CURRENT_ACCOUNTS, SAVINGS_ACCOUNTS, ENVELOPE_CASH, MONEY_MARKET, EURO_FUNDS, EQUITY_AND_FUNDS }
+enum class AssetClass { CURRENT_ACCOUNTS, SAVINGS_ACCOUNTS, ENVELOPE_CASH, MONEY_MARKET, EURO_FUNDS, EQUITY_AND_FUNDS, UNALLOCATED }
 
 data class AllocationSlice(val assetClass: AssetClass, val valueCents: Long)
 
@@ -228,7 +228,8 @@ class PortfolioService(private val jdbc: JdbcClient, private val clock: Clock) {
     /** Parts ramenées à [total] en centimes entiers ; l'arrondi va à la plus grosse part. */
     private fun scaled(parts: Map<AssetClass, Long>, total: Long): Map<AssetClass, Long> {
         val base = parts.values.sum()
-        if (base == 0L) return if (total == 0L) emptyMap() else mapOf(AssetClass.EQUITY_AND_FUNDS to total)
+        // Valeur sans supports connus (saisie sans relevé détaillé) : affichée comme non ventilée, pas devinée.
+        if (base == 0L) return if (total == 0L) emptyMap() else mapOf(AssetClass.UNALLOCATED to total)
         if (base == total) return parts
         val result = parts.mapValues { (_, cents) ->
             BigDecimal(cents).multiply(BigDecimal(total)).divide(BigDecimal(base), 0, RoundingMode.HALF_UP).toLong()

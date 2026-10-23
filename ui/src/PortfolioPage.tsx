@@ -23,6 +23,7 @@ const assetClasses: { key: AssetClass; label: string; color: string }[] = [
   { key: "MONEY_MARKET", label: "Monétaire", color: "var(--series-4)" },
   { key: "EURO_FUNDS", label: "Fonds en euros", color: "var(--series-5)" },
   { key: "EQUITY_AND_FUNDS", label: "Actions et fonds", color: "var(--series-6)" },
+  { key: "UNALLOCATED", label: "Non ventilé (valeur saisie sans détail)", color: "var(--muted)" },
 ];
 
 const quantity = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 5 });

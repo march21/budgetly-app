@@ -252,7 +252,7 @@ export type NetWorth = {
   allocation: { assetClass: AssetClass; valueCents: number }[];
 };
 
-export type AssetClass = "CURRENT_ACCOUNTS" | "SAVINGS_ACCOUNTS" | "ENVELOPE_CASH" | "MONEY_MARKET" | "EURO_FUNDS" | "EQUITY_AND_FUNDS";
+export type AssetClass = "CURRENT_ACCOUNTS" | "SAVINGS_ACCOUNTS" | "ENVELOPE_CASH" | "MONEY_MARKET" | "EURO_FUNDS" | "EQUITY_AND_FUNDS" | "UNALLOCATED";
 
 export type EnvelopePerformance = {
   sinceDate: string;
